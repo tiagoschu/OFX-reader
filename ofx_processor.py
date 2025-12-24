@@ -31,6 +31,102 @@ class OFXProcessor:
 
         return content
 
+    def parse_ofx_xml_v2(self, file_path: str) -> Dict[str, Any]:
+        """Parse OFX XML v2 format manually (workaround for ofxparse bug)"""
+        import xml.etree.ElementTree as ET
+
+        try:
+            # Read file as UTF-8 explicitly
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Remove XML processing instructions that might confuse ElementTree
+            # Keep only the OFX tag and content
+            if '<?OFX' in content:
+                # Find where actual XML starts (after <?OFX...?>)
+                ofx_start = content.find('<OFX>')
+                if ofx_start > 0:
+                    content = content[ofx_start:]
+
+            # Parse XML
+            root = ET.fromstring(content)
+
+            transactions = []
+            file_name = os.path.basename(file_path)
+
+            # Navigate XML structure
+            # OFX > BANKMSGSRSV1 > STMTTRNRS > STMTRS
+            for bank_msg in root.findall('.//BANKMSGSRSV1/STMTTRNRS/STMTRS'):
+                # Get account info
+                acct_from = bank_msg.find('BANKACCTFROM')
+                if acct_from is not None:
+                    bank_id = acct_from.findtext('BANKID', 'N/A')
+                    account_id = acct_from.findtext('ACCTID', 'N/A')
+                    account_type = acct_from.findtext('ACCTTYPE', 'N/A')
+                else:
+                    bank_id = 'N/A'
+                    account_id = 'N/A'
+                    account_type = 'N/A'
+
+                # Get bank name from SIGNONMSGSRSV1
+                bank_name = root.findtext('.//SIGNONMSGSRSV1/SONRS/FI/ORG', bank_id)
+
+                # Process each transaction
+                for stmttrn in bank_msg.findall('.//BANKTRANLIST/STMTTRN'):
+                    # Extract transaction data
+                    trntype = stmttrn.findtext('TRNTYPE', 'OTHER')
+                    dtposted = stmttrn.findtext('DTPOSTED', '')
+                    trnamt = stmttrn.findtext('TRNAMT', '0')
+                    fitid = stmttrn.findtext('FITID', '')
+                    memo = stmttrn.findtext('MEMO', '')
+                    refnum = stmttrn.findtext('REFNUM', '')
+
+                    # Parse date (format: 20250307125924[-3:BRT])
+                    date_obj = None
+                    if dtposted:
+                        try:
+                            # Extract just the date part (YYYYMMDDHHMMSS)
+                            date_str = dtposted.split('[')[0]
+                            date_obj = datetime.strptime(date_str[:14], '%Y%m%d%H%M%S')
+                        except:
+                            try:
+                                # Try just date (YYYYMMDD)
+                                date_obj = datetime.strptime(date_str[:8], '%Y%m%d')
+                            except:
+                                pass
+
+                    transaction = {
+                        'arquivo_origem': file_name,
+                        'banco': bank_name,
+                        'conta': account_id,
+                        'tipo_conta': account_type,
+                        'data': self.format_date(date_obj),
+                        'hora': self.format_time(date_obj),
+                        'tipo_transacao': trntype,
+                        'valor': float(trnamt),
+                        'descricao': memo.strip(),
+                        'id_transacao': fitid,
+                        'numero_cheque': refnum,
+                    }
+                    transactions.append(transaction)
+
+            return {
+                'success': True,
+                'file': file_name,
+                'transactions': transactions,
+                'count': len(transactions),
+                'encoding': 'utf-8 (XML v2 parser)'
+            }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'file': os.path.basename(file_path),
+                'error': f"XML parser error: {str(e)}",
+                'transactions': [],
+                'count': 0
+            }
+
     def try_parse_with_encoding(self, file_path: str, encoding: str, preprocess: bool = False) -> Any:
         """Try to parse OFX file with a specific encoding"""
         try:
@@ -56,6 +152,31 @@ class OFXProcessor:
     def parse_ofx_file(self, file_path: str) -> Dict[str, Any]:
         """Parse a single OFX file and extract transactions"""
         file_name = os.path.basename(file_path)
+
+        try:
+            # Detect if this is OFX XML v2 format
+            with open(file_path, 'rb') as f:
+                first_bytes = f.read(200)
+                try:
+                    first_lines = first_bytes.decode('utf-8', errors='ignore')
+                    is_xml_v2 = '<?xml' in first_lines and 'VERSION="202"' in first_lines
+                except:
+                    is_xml_v2 = False
+
+            # Try XML v2 parser first if detected
+            if is_xml_v2:
+                result = self.parse_ofx_xml_v2(file_path)
+                if result['success']:
+                    self.processed_files.append({
+                        'file': file_name,
+                        'transactions': result['count'],
+                        'status': f'success (encoding: {result["encoding"]})'
+                    })
+                    return result
+                # If XML parser failed, continue with regular parsing below
+
+        except Exception:
+            pass  # Continue with regular parsing
 
         try:
             # List of encodings to try in order
