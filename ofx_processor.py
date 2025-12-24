@@ -28,6 +28,10 @@ class OFXProcessor:
                 ofx = OfxParser.parse(f_string)
                 return ofx, encoding
         except (UnicodeDecodeError, UnicodeEncodeError, LookupError):
+            # Encoding error - try next encoding
+            return None, None
+        except Exception:
+            # Other errors (OFX parsing errors, etc) - try next encoding
             return None, None
 
     def parse_ofx_file(self, file_path: str) -> Dict[str, Any]:
@@ -42,6 +46,11 @@ class OFXProcessor:
                 'windows-1252',  # Windows Latin-1
                 'cp1252',  # Another Windows encoding
                 'latin-1',
+                'cp850',  # DOS Latin-1
+                'cp437',  # DOS US
+                'iso-8859-15',  # Latin-9 with Euro sign
+                'utf-16',  # Wide unicode
+                'utf-8-sig',  # UTF-8 with BOM
                 'ascii'
             ]
 
@@ -74,7 +83,10 @@ class OFXProcessor:
             if ofx is None:
                 try:
                     with open(file_path, encoding='utf-8', errors='ignore') as f:
-                        ofx = OfxParser.parse(f)
+                        content = f.read()
+                        from io import StringIO
+                        f_string = StringIO(content)
+                        ofx = OfxParser.parse(f_string)
                         used_encoding = 'utf-8 (with errors ignored)'
                 except Exception:
                     pass
@@ -83,13 +95,28 @@ class OFXProcessor:
             if ofx is None:
                 try:
                     with open(file_path, encoding='latin-1', errors='replace') as f:
-                        ofx = OfxParser.parse(f)
+                        content = f.read()
+                        from io import StringIO
+                        f_string = StringIO(content)
+                        ofx = OfxParser.parse(f_string)
                         used_encoding = 'latin-1 (with errors replaced)'
                 except Exception:
                     pass
 
+            # Last resort: try reading as binary and forcing ISO-8859-1
             if ofx is None:
-                raise ValueError(f"Não foi possível ler o arquivo com nenhum encoding suportado")
+                try:
+                    with open(file_path, 'rb') as f:
+                        raw_content = f.read()
+                        # Force decode as ISO-8859-1 (never fails)
+                        content = raw_content.decode('iso-8859-1', errors='ignore')
+                        from io import StringIO
+                        f_string = StringIO(content)
+                        ofx = OfxParser.parse(f_string)
+                        used_encoding = 'iso-8859-1 (binary fallback)'
+                except Exception as fallback_error:
+                    # Capture the actual parsing error for better debugging
+                    raise ValueError(f"Não foi possível ler o arquivo. Último erro: {str(fallback_error)}")
 
             transactions = []
 
