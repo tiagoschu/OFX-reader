@@ -17,25 +17,81 @@ class OFXProcessor:
         self.processed_files = []
         self.errors = []
 
-    def detect_encoding(self, file_path: str) -> str:
-        """Detect file encoding"""
-        with open(file_path, 'rb') as f:
-            raw_data = f.read()
-            result = chardet.detect(raw_data)
-            return result['encoding'] or 'utf-8'
+    def try_parse_with_encoding(self, file_path: str, encoding: str) -> Any:
+        """Try to parse OFX file with a specific encoding"""
+        try:
+            with open(file_path, encoding=encoding, errors='strict') as f:
+                content = f.read()
+                # Reset file pointer by reading from string
+                from io import StringIO
+                f_string = StringIO(content)
+                ofx = OfxParser.parse(f_string)
+                return ofx, encoding
+        except (UnicodeDecodeError, UnicodeEncodeError, LookupError):
+            return None, None
 
     def parse_ofx_file(self, file_path: str) -> Dict[str, Any]:
         """Parse a single OFX file and extract transactions"""
-        try:
-            # Detect encoding
-            encoding = self.detect_encoding(file_path)
+        file_name = os.path.basename(file_path)
 
-            # Parse OFX file
-            with open(file_path, encoding=encoding, errors='ignore') as f:
-                ofx = OfxParser.parse(f)
+        try:
+            # List of encodings to try in order
+            encodings_to_try = [
+                'utf-8',
+                'iso-8859-1',  # Latin-1
+                'windows-1252',  # Windows Latin-1
+                'cp1252',  # Another Windows encoding
+                'latin-1',
+                'ascii'
+            ]
+
+            # First try with chardet detection
+            try:
+                with open(file_path, 'rb') as f:
+                    raw_data = f.read()
+                    detected = chardet.detect(raw_data)
+                    if detected and detected.get('encoding') and detected.get('confidence', 0) > 0.7:
+                        detected_encoding = detected['encoding']
+                        # Add detected encoding to the front of the list if not already there
+                        if detected_encoding not in encodings_to_try:
+                            encodings_to_try.insert(0, detected_encoding)
+                        elif detected_encoding != encodings_to_try[0]:
+                            encodings_to_try.remove(detected_encoding)
+                            encodings_to_try.insert(0, detected_encoding)
+            except Exception:
+                pass  # If chardet fails, continue with default list
+
+            # Try each encoding until one works
+            ofx = None
+            used_encoding = None
+
+            for encoding in encodings_to_try:
+                ofx, used_encoding = self.try_parse_with_encoding(file_path, encoding)
+                if ofx is not None:
+                    break
+
+            # If all encodings failed, try with errors='ignore' as last resort
+            if ofx is None:
+                try:
+                    with open(file_path, encoding='utf-8', errors='ignore') as f:
+                        ofx = OfxParser.parse(f)
+                        used_encoding = 'utf-8 (with errors ignored)'
+                except Exception:
+                    pass
+
+            # If still failed, try with latin-1 and errors='replace'
+            if ofx is None:
+                try:
+                    with open(file_path, encoding='latin-1', errors='replace') as f:
+                        ofx = OfxParser.parse(f)
+                        used_encoding = 'latin-1 (with errors replaced)'
+                except Exception:
+                    pass
+
+            if ofx is None:
+                raise ValueError(f"Não foi possível ler o arquivo com nenhum encoding suportado")
 
             transactions = []
-            file_name = os.path.basename(file_path)
 
             # Process each account in the OFX file
             for account in ofx.accounts:
@@ -66,14 +122,15 @@ class OFXProcessor:
             self.processed_files.append({
                 'file': file_name,
                 'transactions': len(transactions),
-                'status': 'success'
+                'status': f'success (encoding: {used_encoding})'
             })
 
             return {
                 'success': True,
                 'file': file_name,
                 'transactions': transactions,
-                'count': len(transactions)
+                'count': len(transactions),
+                'encoding': used_encoding
             }
 
         except Exception as e:
