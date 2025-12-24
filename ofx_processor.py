@@ -17,11 +17,30 @@ class OFXProcessor:
         self.processed_files = []
         self.errors = []
 
-    def try_parse_with_encoding(self, file_path: str, encoding: str) -> Any:
+    def preprocess_c6_file(self, content: str) -> str:
+        """Pré-processa arquivos C6 Bank para corrigir problemas conhecidos"""
+        # Fix 1: Corrigir "UTF - 8" para "UTF-8" (remover espaços)
+        content = content.replace('UTF - 8', 'UTF-8')
+        content = content.replace('UTF- 8', 'UTF-8')
+        content = content.replace('UTF -8', 'UTF-8')
+
+        # Fix 2: Se tem ENCODING:UTF-8 e CHARSET:1252, remover o CHARSET conflitante
+        if 'ENCODING:UTF-8' in content and 'CHARSET:1252' in content:
+            # Forçar UTF-8 removendo charset conflitante
+            content = content.replace('CHARSET:1252', 'CHARSET:NONE')
+
+        return content
+
+    def try_parse_with_encoding(self, file_path: str, encoding: str, preprocess: bool = False) -> Any:
         """Try to parse OFX file with a specific encoding"""
         try:
             with open(file_path, encoding=encoding, errors='strict') as f:
                 content = f.read()
+
+                # Apply C6 Bank preprocessing if requested
+                if preprocess:
+                    content = self.preprocess_c6_file(content)
+
                 # Reset file pointer by reading from string
                 from io import StringIO
                 f_string = StringIO(content)
@@ -74,20 +93,30 @@ class OFXProcessor:
             ofx = None
             used_encoding = None
 
+            # First attempt: without preprocessing
             for encoding in encodings_to_try:
-                ofx, used_encoding = self.try_parse_with_encoding(file_path, encoding)
+                ofx, used_encoding = self.try_parse_with_encoding(file_path, encoding, preprocess=False)
                 if ofx is not None:
                     break
+
+            # Second attempt: with C6 Bank preprocessing
+            if ofx is None:
+                for encoding in encodings_to_try:
+                    ofx, used_encoding = self.try_parse_with_encoding(file_path, encoding, preprocess=True)
+                    if ofx is not None:
+                        used_encoding = f"{used_encoding} (C6 preprocessed)"
+                        break
 
             # If all encodings failed, try with errors='ignore' as last resort
             if ofx is None:
                 try:
                     with open(file_path, encoding='utf-8', errors='ignore') as f:
                         content = f.read()
+                        content = self.preprocess_c6_file(content)  # Apply preprocessing
                         from io import StringIO
                         f_string = StringIO(content)
                         ofx = OfxParser.parse(f_string)
-                        used_encoding = 'utf-8 (with errors ignored)'
+                        used_encoding = 'utf-8 (with errors ignored + C6 fix)'
                 except Exception:
                     pass
 
@@ -96,10 +125,11 @@ class OFXProcessor:
                 try:
                     with open(file_path, encoding='latin-1', errors='replace') as f:
                         content = f.read()
+                        content = self.preprocess_c6_file(content)  # Apply preprocessing
                         from io import StringIO
                         f_string = StringIO(content)
                         ofx = OfxParser.parse(f_string)
-                        used_encoding = 'latin-1 (with errors replaced)'
+                        used_encoding = 'latin-1 (with errors replaced + C6 fix)'
                 except Exception:
                     pass
 
@@ -110,10 +140,11 @@ class OFXProcessor:
                         raw_content = f.read()
                         # Force decode as ISO-8859-1 (never fails)
                         content = raw_content.decode('iso-8859-1', errors='ignore')
+                        content = self.preprocess_c6_file(content)  # Apply preprocessing
                         from io import StringIO
                         f_string = StringIO(content)
                         ofx = OfxParser.parse(f_string)
-                        used_encoding = 'iso-8859-1 (binary fallback)'
+                        used_encoding = 'iso-8859-1 (binary fallback + C6 fix)'
                 except Exception as fallback_error:
                     # Capture the actual parsing error for better debugging
                     raise ValueError(f"Não foi possível ler o arquivo. Último erro: {str(fallback_error)}")
