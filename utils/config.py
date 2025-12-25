@@ -56,10 +56,23 @@ class Config:
     def save_config(self):
         """Save configuration to file"""
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            # Ensure config directory exists
+            self.config_dir.mkdir(exist_ok=True)
+
+            # Write atomically to prevent corruption
+            temp_file = self.config_file.with_suffix('.json.tmp')
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
+
+            # Only replace if write was successful
+            temp_file.replace(self.config_file)
         except Exception as e:
-            print(f"Error saving config: {e}")
+            print(f"⚠️  Erro salvando config: {e}")
+            # Clean up temp file if it exists
+            try:
+                temp_file.unlink()
+            except:
+                pass
 
     def get(self, key, default=None):
         """Get configuration value"""
