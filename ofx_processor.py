@@ -17,6 +17,37 @@ class OFXProcessor:
         self.processed_files = []
         self.errors = []
 
+    def normalize_bank_name(self, bank_name: str) -> str:
+        """
+        Normalize bank name to ensure consistency
+
+        Fixes issues like:
+        - "BANCO C6 S.A." vs "Banco C6 S.A."
+        - Extra spaces, different capitalization
+
+        Returns standardized bank name
+        """
+        if not bank_name or bank_name == 'N/A':
+            return bank_name
+
+        # Convert to title case for consistency
+        normalized = bank_name.strip().title()
+
+        # Common bank name standardizations
+        standardizations = {
+            'Nu Pagamentos S.A.': 'Nu Pagamentos S.A.',
+            'Banco C6 S.A.': 'Banco C6 S.A.',
+            'Cora Scd Sa': 'Cora SCD SA',
+            'Pagseguro Internet S/A': 'PagSeguro Internet S/A',
+        }
+
+        # Apply specific standardizations
+        for pattern, standard in standardizations.items():
+            if normalized.lower() == pattern.lower():
+                return standard
+
+        return normalized
+
     def preprocess_c6_file(self, content: str) -> str:
         """Pré-processa arquivos C6 Bank para corrigir problemas conhecidos"""
         # Fix 1: Corrigir "UTF - 8" para "UTF-8" (remover espaços)
@@ -70,6 +101,7 @@ class OFXProcessor:
 
                 # Get bank name from SIGNONMSGSRSV1
                 bank_name = root.findtext('.//SIGNONMSGSRSV1/SONRS/FI/ORG', bank_id)
+                bank_name = self.normalize_bank_name(bank_name)
 
                 # Process each transaction
                 for stmttrn in bank_msg.findall('.//BANKTRANLIST/STMTTRN'):
@@ -275,6 +307,7 @@ class OFXProcessor:
             # Process each account in the OFX file
             for account in ofx.accounts:
                 bank_id = getattr(account.institution, 'organization', 'N/A') if hasattr(account, 'institution') else 'N/A'
+                bank_id = self.normalize_bank_name(bank_id)
                 account_id = account.account_id if hasattr(account, 'account_id') else 'N/A'
                 account_type = account.account_type if hasattr(account, 'account_type') else 'N/A'
 
