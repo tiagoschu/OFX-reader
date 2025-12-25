@@ -40,7 +40,16 @@ class Config:
                     # Merge with defaults (in case new keys were added)
                     default_config.update(loaded_config)
             except Exception as e:
-                print(f"Error loading config: {e}")
+                print(f"⚠️  Config corrompido, recriando: {e}")
+                # Backup corrupted file
+                try:
+                    backup_file = self.config_file.with_suffix('.json.bak')
+                    self.config_file.rename(backup_file)
+                    print(f"   Backup salvo em: {backup_file}")
+                except:
+                    # If backup fails, just delete it
+                    self.config_file.unlink()
+                # Will use default config
 
         return default_config
 
