@@ -22,18 +22,18 @@ class SplashScreen(QSplashScreen):
     """Custom splash screen with app information"""
 
     def __init__(self):
-        # Create a pixmap for the splash screen
+        # Create pixmap with all content BEFORE passing to QSplashScreen
+        pixmap = self.create_splash_pixmap()
+        super().__init__(pixmap, Qt.WindowStaysOnTopHint)
+
+    def create_splash_pixmap(self):
+        """Create the splash screen pixmap"""
+        # Create pixmap
         pixmap = QPixmap(600, 400)
         pixmap.fill(QColor(COLOR_PRIMARY))
 
-        super().__init__(pixmap, Qt.WindowStaysOnTopHint)
-
-        # Set up painter for custom drawing
-        self.setup_ui()
-
-    def setup_ui(self):
-        """Setup the splash screen UI"""
-        painter = QPainter(self.pixmap())
+        # Create painter on pixmap
+        painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
 
         # Background gradient
@@ -82,7 +82,10 @@ class SplashScreen(QSplashScreen):
         painter.setPen(QColor("#B3E5FC"))
         painter.drawText(0, 370, 600, 20, Qt.AlignCenter, "Carregando...")
 
+        # End painter before returning pixmap
         painter.end()
+
+        return pixmap
 
     def show_message(self, message):
         """Show a message on the splash screen"""
