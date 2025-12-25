@@ -1,0 +1,21 @@
+# GUI Requirements for OFX Consolidador Pro v3.0
+
+# Core dependencies (already installed)
+ofxparse==0.21
+pandas>=2.0.0
+chardet>=5.0.0
+openpyxl>=3.0.0
+
+# PyQt5 for GUI
+PyQt5>=5.15.0
+PyQt5-sip>=12.0.0
+
+# Plotly for interactive charts
+plotly>=5.18.0
+kaleido>=0.2.1  # For static image export from plotly
+
+# PDF generation
+fpdf2>=2.7.0
+
+# Optional: Better styling
+PyQt5-stubs>=5.15.0  # Type hints for PyQt5
