@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from utils.constants import APP_NAME, VERSION, AUTHOR, RELEASE_DATE
+from core.transfer_detector import TransferDetector
 
 
 class CompactStatCard(QFrame):
@@ -181,21 +182,23 @@ class HomeTab(QWidget):
         for i in reversed(range(self.stats_grid.count())):
             self.stats_grid.itemAt(i).widget().setParent(None)
 
-        # Detect transfers (PIX, TED, DOC, Transferência)
-        transfer_keywords = ['pix', 'ted', 'doc', 'transferencia', 'transferência',
-                            'transfer', 'conta global', 'entre contas']
+        # Use proper transfer pair detection
+        detector = TransferDetector(tolerance=1.0)
+        df = detector.detect_transfer_pairs(df)
+        df = detector.detect_unpaired_transfers(df)
 
-        df['is_transfer'] = df['descricao'].str.lower().str.contains('|'.join(transfer_keywords), na=False)
-
-        # Calculate stats excluding transfers
-        df_credits = df[(df['valor'] > 0) & (~df['is_transfer'])]
-        df_debits = df[(df['valor'] < 0) & (~df['is_transfer'])]
-        df_transfers = df[df['is_transfer']]
+        # Calculate stats excluding PAIRED internal transfers only
+        df_credits = df[(df['valor'] > 0) & (~df.get('is_internal_transfer', False))]
+        df_debits = df[(df['valor'] < 0) & (~df.get('is_internal_transfer', False))]
+        df_transfers = df[df.get('is_internal_transfer', False)]
 
         total_trans = len(df)
         real_credits = df_credits['valor'].sum()
         real_debits = df_debits['valor'].sum()
-        transfers_total = df_transfers['valor'].abs().sum() / 2  # Divide by 2 to avoid double counting
+
+        # For transfers, count each pair once (sum and divide by 2)
+        transfers_total = df_transfers['valor'].abs().sum() / 2 if not df_transfers.empty else 0
+
         balance = real_credits + real_debits  # Debits are already negative
 
         num_banks = df['banco'].nunique()
@@ -211,13 +214,23 @@ class HomeTab(QWidget):
         else:
             period = "---"
 
+        # Get transfer summary
+        transfer_summary = detector.get_transfer_summary(df)
+        num_pairs = transfer_summary.get('total_transfer_pairs', 0)
+        num_unpaired = transfer_summary.get('total_unpaired_possible', 0)
+
+        # Build transfer subtitle
+        transfer_subtitle = f"{num_pairs} pares detectados"
+        if num_unpaired > 0:
+            transfer_subtitle += f", {num_unpaired} para revisão"
+
         # Create cards with real data
         cards_data = [
             ("💰", "Transações", f"{total_trans:,}", "", "#1976D2"),
             ("📈", "Receitas Reais", f"R$ {real_credits:,.2f}", "excluindo transferências", "#4CAF50"),
             ("📉", "Despesas Reais", f"R$ {abs(real_debits):,.2f}", "excluindo transferências", "#F44336"),
             ("💵", "Saldo Líquido", f"R$ {balance:,.2f}", "receitas - despesas", "#9C27B0"),
-            ("🔄", "Transferências", f"R$ {transfers_total:,.2f}", f"{len(df_transfers)} movimentações", "#FF9800"),
+            ("🔄", "Transferências", f"R$ {transfers_total:,.2f}", transfer_subtitle, "#FF9800"),
             ("🏦", "Bancos", str(num_banks), "", "#00BCD4"),
             ("📊", "Contas", str(num_accounts), "", "#E91E63"),
             ("📅", "Período", period, "", "#607D8B"),
