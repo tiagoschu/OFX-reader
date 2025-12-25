@@ -48,7 +48,7 @@ class ProcessThread(QThread):
 class ImportTab(QWidget):
     """Tab for importing OFX files"""
 
-    data_processed = pyqtSignal(object)  # Emit DataFrame when processed
+    data_processed = pyqtSignal(object, object)  # Emit DataFrame and processor when processed
 
     def __init__(self):
         super().__init__()
@@ -254,8 +254,8 @@ class ImportTab(QWidget):
         # Show summary
         self.show_summary()
 
-        # Emit signal with data
-        self.data_processed.emit(df)
+        # Emit signal with data and processor
+        self.data_processed.emit(df, processor)
 
         # Ask to save
         reply = QMessageBox.question(

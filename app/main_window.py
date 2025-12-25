@@ -110,15 +110,16 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
 
-    def on_data_processed(self, df):
+    def on_data_processed(self, df, processor):
         """Handle data processed signal"""
         self.df = df
+        self.processor = processor
 
         # Update home tab with stats
         self.tab_home.update_stats(df)
 
-        # Update analysis tab with data
-        self.tab_analysis.update_data(df)
+        # Update analysis tab with data and duplicates
+        self.tab_analysis.update_data(df, processor.duplicates if processor else [])
 
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))

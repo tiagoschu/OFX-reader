@@ -76,6 +76,7 @@ class AnalysisTab(QWidget):
         self.df = None
         self.analyzer = None
         self.gaps = []
+        self.duplicates = []
         self.init_ui()
 
     def init_ui(self):
@@ -169,6 +170,57 @@ class AnalysisTab(QWidget):
 
         filter_frame.setLayout(filter_layout)
         main_layout.addWidget(filter_frame)
+
+        # Duplicates section
+        self.duplicates_frame = QFrame()
+        self.duplicates_frame.setStyleSheet("""
+            QFrame {
+                background-color: #FFF3E0;
+                border-radius: 6px;
+                border-left: 4px solid #FF9800;
+                padding: 10px;
+            }
+        """)
+        self.duplicates_frame.setVisible(False)  # Hidden by default
+
+        duplicates_main_layout = QVBoxLayout()
+        duplicates_main_layout.setSpacing(8)
+        duplicates_main_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Duplicates header
+        dup_header = QHBoxLayout()
+        dup_title = QLabel("🔄 Duplicatas Detectadas")
+        dup_title.setStyleSheet("font-size: 12px; font-weight: bold; color: #E65100; background: transparent;")
+        dup_header.addWidget(dup_title)
+
+        self.dup_count_label = QLabel("0 grupos")
+        self.dup_count_label.setStyleSheet("font-size: 10px; color: #F57C00; background: transparent;")
+        dup_header.addWidget(self.dup_count_label)
+        dup_header.addStretch()
+
+        duplicates_main_layout.addLayout(dup_header)
+
+        # Duplicates list container (scrollable)
+        dup_scroll = QScrollArea()
+        dup_scroll.setWidgetResizable(True)
+        dup_scroll.setMaximumHeight(200)
+        dup_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+
+        self.duplicates_container = QWidget()
+        self.duplicates_layout = QVBoxLayout()
+        self.duplicates_layout.setSpacing(4)
+        self.duplicates_container.setLayout(self.duplicates_layout)
+
+        dup_scroll.setWidget(self.duplicates_container)
+        duplicates_main_layout.addWidget(dup_scroll)
+
+        self.duplicates_frame.setLayout(duplicates_main_layout)
+        main_layout.addWidget(self.duplicates_frame)
 
         # Gaps display area (scrollable)
         scroll_area = QScrollArea()
@@ -269,9 +321,10 @@ class AnalysisTab(QWidget):
 
         self.gaps_layout.addWidget(msg_frame)
 
-    def update_data(self, df):
+    def update_data(self, df, duplicates=None):
         """Update analysis with new data"""
         self.df = df
+        self.duplicates = duplicates if duplicates else []
 
         if df is None or df.empty:
             return
@@ -292,6 +345,9 @@ class AnalysisTab(QWidget):
 
     def refresh_display(self):
         """Refresh the gaps display"""
+        # Update duplicates display
+        self.update_duplicates_display()
+
         # Clear existing widgets
         for i in reversed(range(self.gaps_layout.count())):
             widget = self.gaps_layout.itemAt(i).widget()
@@ -423,3 +479,64 @@ class AnalysisTab(QWidget):
 
         # Add stretch at the end
         self.gaps_layout.addStretch()
+
+    def update_duplicates_display(self):
+        """Update duplicates display section"""
+        # Clear existing widgets
+        for i in reversed(range(self.duplicates_layout.count())):
+            widget = self.duplicates_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        # Show/hide duplicates frame
+        if not self.duplicates or len(self.duplicates) == 0:
+            self.duplicates_frame.setVisible(False)
+            return
+
+        self.duplicates_frame.setVisible(True)
+        self.dup_count_label.setText(f"{len(self.duplicates)} grupo(s) de duplicatas")
+
+        # Display each duplicate group
+        for dup_group in self.duplicates:
+            # Create card for duplicate group
+            dup_card = QFrame()
+            dup_card.setStyleSheet("""
+                QFrame {
+                    background-color: white;
+                    border-radius: 4px;
+                    padding: 8px;
+                    margin: 2px;
+                }
+            """)
+
+            card_layout = QVBoxLayout()
+            card_layout.setSpacing(4)
+            card_layout.setContentsMargins(8, 6, 8, 6)
+
+            # Header
+            header = QLabel(f"ID: {dup_group['id_transacao']} • {dup_group['banco']} • Conta {dup_group['conta']}")
+            header.setStyleSheet("font-size: 10px; font-weight: bold; color: #E65100; background: transparent;")
+            card_layout.addWidget(header)
+
+            # Count
+            count_label = QLabel(f"📊 {dup_group['count']} ocorrências encontradas (mantida apenas a primeira)")
+            count_label.setStyleSheet("font-size: 9px; color: #666; background: transparent;")
+            card_layout.addWidget(count_label)
+
+            # Show all occurrences
+            for i, occurrence in enumerate(dup_group['occurrences']):
+                status = "✅ Mantida" if i == 0 else "🗑️ Removida"
+                occ_label = QLabel(
+                    f"{status}: {occurrence.get('data', 'N/A')} - "
+                    f"R$ {occurrence.get('valor', 0):,.2f} - "
+                    f"{occurrence.get('descricao', 'N/A')[:40]}... - "
+                    f"Arquivo: {occurrence.get('arquivo_origem', 'N/A')}"
+                )
+                occ_label.setStyleSheet(f"font-size: 8px; color: {'#4CAF50' if i == 0 else '#999'}; background: transparent;")
+                occ_label.setWordWrap(True)
+                card_layout.addWidget(occ_label)
+
+            dup_card.setLayout(card_layout)
+            self.duplicates_layout.addWidget(dup_card)
+
+        self.duplicates_layout.addStretch()

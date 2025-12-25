@@ -16,6 +16,7 @@ class OFXProcessor:
         self.transactions = []
         self.processed_files = []
         self.errors = []
+        self.duplicates = []  # Store detected duplicates
 
     def normalize_bank_name(self, bank_name: str) -> str:
         """
@@ -388,6 +389,7 @@ class OFXProcessor:
         self.transactions = []
         self.processed_files = []
         self.errors = []
+        self.duplicates = []  # Reset duplicates
 
         # Process each file
         for file_path in file_paths:
@@ -409,6 +411,30 @@ class OFXProcessor:
             df_without_id = df[df['id_transacao'] == '']
 
             if not df_with_id.empty:
+                # Find duplicates BEFORE removing them
+                duplicate_mask = df_with_id.duplicated(subset=['id_transacao', 'conta', 'banco'], keep='first')
+                duplicates_df = df_with_id[duplicate_mask].copy()
+
+                # Store duplicate info for review
+                if not duplicates_df.empty:
+                    for _, dup_row in duplicates_df.iterrows():
+                        # Find all transactions with same id_transacao + conta + banco
+                        same_id_mask = (
+                            (df_with_id['id_transacao'] == dup_row['id_transacao']) &
+                            (df_with_id['conta'] == dup_row['conta']) &
+                            (df_with_id['banco'] == dup_row['banco'])
+                        )
+                        all_occurrences = df_with_id[same_id_mask].to_dict('records')
+
+                        self.duplicates.append({
+                            'id_transacao': dup_row['id_transacao'],
+                            'banco': dup_row['banco'],
+                            'conta': dup_row['conta'],
+                            'occurrences': all_occurrences,
+                            'count': len(all_occurrences)
+                        })
+
+                # Now remove duplicates
                 df_with_id = df_with_id.drop_duplicates(
                     subset=['id_transacao', 'conta', 'banco'],
                     keep='first'
