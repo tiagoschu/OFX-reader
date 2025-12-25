@@ -15,7 +15,10 @@ from app.tabs.tab_home import HomeTab
 from app.tabs.tab_import import ImportTab
 from app.tabs.tab_analysis import AnalysisTab
 from app.tabs.tab_charts import ChartsTab
-from app.tabs.tab_placeholder import PlaceholderTab
+from app.tabs.tab_categories import CategoriesTab
+from app.tabs.tab_reports import ReportsTab
+from app.tabs.tab_export import ExportTab
+from app.tabs.tab_config import ConfigTab
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
 
@@ -50,10 +53,10 @@ class MainWindow(QMainWindow):
         self.tab_import = ImportTab()
         self.tab_analysis = AnalysisTab()
         self.tab_charts = ChartsTab()
-        self.tab_categories = PlaceholderTab("Categorias", "🎯")
-        self.tab_reports = PlaceholderTab("Relatórios", "📋")
-        self.tab_export = PlaceholderTab("Exportar", "💾")
-        self.tab_settings = PlaceholderTab("Configurações", "⚙️")
+        self.tab_categories = CategoriesTab()
+        self.tab_reports = ReportsTab()
+        self.tab_export = ExportTab()
+        self.tab_settings = ConfigTab()
 
         # Add tabs
         self.tabs.addTab(self.tab_home, "🏠 Início")
@@ -124,6 +127,12 @@ class MainWindow(QMainWindow):
 
         # Update charts tab with data
         self.tab_charts.update_data(df)
+
+        # Update export tab with data
+        self.tab_export.update_data(df)
+
+        # Update reports tab with data
+        self.tab_reports.update_data(df)
 
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
