@@ -57,7 +57,8 @@ class ChartWidget(QFrame):
 
     def set_chart(self, fig):
         """Set Plotly figure to display"""
-        html = fig.to_html(include_plotlyjs='cdn', config={'responsive': True})
+        # Use include_plotlyjs=True to embed the library (works offline, no CDN issues)
+        html = fig.to_html(include_plotlyjs=True, config={'responsive': True})
         self.web_view.setHtml(html)
 
     def show_message(self, message):
