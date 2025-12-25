@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.tabs.tab_home import HomeTab
 from app.tabs.tab_import import ImportTab
 from app.tabs.tab_analysis import AnalysisTab
+from app.tabs.tab_charts import ChartsTab
 from app.tabs.tab_placeholder import PlaceholderTab
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
@@ -48,7 +49,7 @@ class MainWindow(QMainWindow):
         self.tab_home = HomeTab()
         self.tab_import = ImportTab()
         self.tab_analysis = AnalysisTab()
-        self.tab_charts = PlaceholderTab("Gráficos", "📈")
+        self.tab_charts = ChartsTab()
         self.tab_categories = PlaceholderTab("Categorias", "🎯")
         self.tab_reports = PlaceholderTab("Relatórios", "📋")
         self.tab_export = PlaceholderTab("Exportar", "💾")
@@ -120,6 +121,9 @@ class MainWindow(QMainWindow):
 
         # Update analysis tab with data and duplicates
         self.tab_analysis.update_data(df, processor.duplicates if processor else [])
+
+        # Update charts tab with data
+        self.tab_charts.update_data(df)
 
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
