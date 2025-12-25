@@ -289,10 +289,34 @@ class ReportsTab(QWidget):
         # Save directory
         config.set('last_export_directory', os.path.dirname(file_path))
 
+        # Map report type index to report type string
+        report_types = {
+            0: 'complete',      # Resumo Financeiro Completo
+            1: 'by_category',   # Análise por Categoria
+            2: 'by_bank',       # Análise por Banco
+            3: 'monthly',       # Análise Mensal
+            4: 'detailed',      # Transações Detalhadas
+            5: 'gaps',          # Gaps e Inconsistências
+        }
+
+        report_type = report_types.get(self.cb_report_type.currentIndex(), 'complete')
+
+        # Get date filter if not all period
+        date_filter = None
+        if not self.cb_all_period.isChecked():
+            start_date = self.date_from.date().toString('dd/MM/yyyy')
+            end_date = self.date_to.date().toString('dd/MM/yyyy')
+            date_filter = (start_date, end_date)
+
         # Generate report
         try:
             exporter = DataExporter(self.df)
-            success = exporter.export_pdf_report(file_path)
+            success = exporter.export_pdf_report(
+                file_path,
+                report_type=report_type,
+                include_details=self.cb_include_details.isChecked(),
+                date_filter=date_filter
+            )
 
             if success:
                 QMessageBox.information(

@@ -128,6 +128,9 @@ class MainWindow(QMainWindow):
         # Update charts tab with data
         self.tab_charts.update_data(df)
 
+        # Update categories tab with data
+        self.tab_categories.update_data(df)
+
         # Update export tab with data
         self.tab_export.update_data(df)
 
