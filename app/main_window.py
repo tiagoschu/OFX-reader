@@ -38,10 +38,7 @@ class MainWindow(QMainWindow):
         else:
             self.resize(1400, 900)
 
-        # Create menu bar
-        self.create_menu_bar()
-
-        # Create tab widget
+        # Create tab widget FIRST
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
         self.tabs.setMovable(False)
@@ -71,6 +68,9 @@ class MainWindow(QMainWindow):
 
         # Set central widget
         self.setCentralWidget(self.tabs)
+
+        # Create menu bar AFTER tabs are created
+        self.create_menu_bar()
 
         # Status bar
         self.statusBar().showMessage("Pronto")
