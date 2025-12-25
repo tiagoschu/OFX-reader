@@ -204,6 +204,29 @@ class HomeTab(QWidget):
         num_banks = df['banco'].nunique()
         num_accounts = df['conta'].nunique()
 
+        # Debug: Show banco/conta info
+        print("\n" + "=" * 60)
+        print("DEBUG: BANCOS E CONTAS")
+        print("=" * 60)
+        print(f"Bancos únicos ({num_banks}):")
+        for banco in sorted(df['banco'].unique()):
+            count = len(df[df['banco'] == banco])
+            print(f"  • {banco} ({count} trans.)")
+
+        print(f"\nContas únicas ({num_accounts}):")
+        for conta in sorted(df['conta'].unique()):
+            banco = df[df['conta'] == conta]['banco'].iloc[0]
+            count = len(df[df['conta'] == conta])
+            print(f"  • {conta} ({banco}) - {count} trans.")
+
+        print("\nCombinações Banco+Conta:")
+        for banco in sorted(df['banco'].unique()):
+            contas = df[df['banco'] == banco]['conta'].unique()
+            print(f"  • {banco}: {len(contas)} conta(s)")
+            for conta in contas:
+                print(f"      - {conta}")
+        print("=" * 60 + "\n")
+
         # Date range
         if 'data' in df.columns:
             dates = df['data'].dropna()
