@@ -3,7 +3,7 @@ Home Tab - Dashboard with overview
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                             QFrame, QScrollArea, QGridLayout)
+                             QFrame, QScrollArea, QGridLayout, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 import sys
@@ -14,29 +14,39 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from utils.constants import APP_NAME, VERSION, AUTHOR, RELEASE_DATE
 
 
-class StatCard(QFrame):
-    """Stat card widget"""
+class CompactStatCard(QFrame):
+    """Compact stat card widget"""
 
-    def __init__(self, title, value, icon="", color="#1976D2"):
+    def __init__(self, icon, title, value, subtitle="", color="#1976D2"):
         super().__init__()
-        self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        self.setFrameStyle(QFrame.Box)
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: white;
-                border-radius: 10px;
-                border-left: 5px solid {color};
-                padding: 15px;
+                border-radius: 8px;
+                border: none;
+                border-left: 4px solid {color};
+                padding: 12px;
+                margin: 2px;
+            }}
+            QFrame:hover {{
+                background-color: #F5F5F5;
             }}
         """)
 
         layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(8, 8, 8, 8)
 
-        # Icon and title
+        # Icon and title in same line
         header = QHBoxLayout()
+        header.setSpacing(8)
+
         icon_label = QLabel(icon)
-        icon_label.setStyleSheet("font-size: 32px;")
+        icon_label.setStyleSheet("font-size: 20px; background: transparent; border: none;")
+
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 12px; color: #757575; font-weight: bold;")
+        title_label.setStyleSheet("font-size: 11px; color: #757575; font-weight: 600; background: transparent; border: none;")
 
         header.addWidget(icon_label)
         header.addWidget(title_label)
@@ -46,8 +56,14 @@ class StatCard(QFrame):
 
         # Value
         value_label = QLabel(value)
-        value_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #212121;")
+        value_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #212121; background: transparent; border: none;")
         layout.addWidget(value_label)
+
+        # Subtitle if provided
+        if subtitle:
+            sub_label = QLabel(subtitle)
+            sub_label.setStyleSheet("font-size: 9px; color: #9E9E9E; background: transparent; border: none;")
+            layout.addWidget(sub_label)
 
         self.setLayout(layout)
 
@@ -61,106 +77,98 @@ class HomeTab(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Main layout
         main_layout = QVBoxLayout()
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 15, 15, 15)
 
-        # Scroll area for content
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameStyle(QFrame.NoFrame)
-
-        content_widget = QWidget()
-        content_layout = QVBoxLayout()
-
-        # Welcome section
-        welcome_frame = QFrame()
-        welcome_frame.setStyleSheet("""
+        # Compact header
+        header_frame = QFrame()
+        header_frame.setMaximumHeight(80)
+        header_frame.setStyleSheet("""
             QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #1976D2, stop:1 #1565C0);
-                border-radius: 10px;
-                padding: 30px;
+                border-radius: 8px;
             }
         """)
-        welcome_layout = QVBoxLayout()
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(20, 10, 20, 10)
 
-        title = QLabel(f"Bem-vindo ao {APP_NAME}")
-        title.setStyleSheet("color: white; font-size: 28px; font-weight: bold;")
-        welcome_layout.addWidget(title)
+        # Title section
+        title_section = QVBoxLayout()
+        title = QLabel(f"💰 {APP_NAME}")
+        title.setStyleSheet("color: white; font-size: 20px; font-weight: bold; background: transparent;")
 
-        subtitle = QLabel("Análise Inteligente de Extratos Bancários")
-        subtitle.setStyleSheet("color: #B3E5FC; font-size: 16px;")
-        welcome_layout.addWidget(subtitle)
+        info_text = QLabel(f"v{VERSION} • {AUTHOR} • {RELEASE_DATE}")
+        info_text.setStyleSheet("color: #B3E5FC; font-size: 10px; background: transparent;")
 
-        info_layout = QHBoxLayout()
-        info_layout.addWidget(QLabel(f"📌 Versão {VERSION}"))
-        info_layout.addWidget(QLabel(f"👤 {AUTHOR}"))
-        info_layout.addWidget(QLabel(f"📅 {RELEASE_DATE}"))
-        info_layout.addStretch()
+        title_section.addWidget(title)
+        title_section.addWidget(info_text)
 
-        for label in info_layout.findChildren(QLabel):
-            label.setStyleSheet("color: white; font-size: 12px;")
+        header_layout.addLayout(title_section)
+        header_layout.addStretch()
 
-        welcome_layout.addLayout(info_layout)
-        welcome_frame.setLayout(welcome_layout)
-        content_layout.addWidget(welcome_frame)
+        header_frame.setLayout(header_layout)
+        main_layout.addWidget(header_frame)
 
-        # Stats section
-        stats_label = QLabel("📊 Visão Geral")
-        stats_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 20px;")
-        content_layout.addWidget(stats_label)
-
-        # Stats cards
+        # Stats grid - 2x4 layout (more compact)
         self.stats_grid = QGridLayout()
-        content_layout.addLayout(self.stats_grid)
+        self.stats_grid.setSpacing(8)
+        main_layout.addLayout(self.stats_grid)
 
         # Create placeholder cards
         self.create_placeholder_cards()
 
-        # Quick start section
-        quick_start_label = QLabel("🚀 Início Rápido")
-        quick_start_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 20px;")
-        content_layout.addWidget(quick_start_label)
-
-        instructions = QLabel("""
-        <p><b>1.</b> Vá para a aba <b>Importar</b> e adicione seus arquivos OFX</p>
-        <p><b>2.</b> Configure as opções de processamento</p>
-        <p><b>3.</b> Clique em <b>Processar Arquivos</b></p>
-        <p><b>4.</b> Explore as análises e gráficos nas outras abas</p>
-        <p><b>5.</b> Exporte seus dados no formato desejado</p>
-        """)
-        instructions.setStyleSheet("""
-            QLabel {
+        # Quick actions section
+        actions_frame = QFrame()
+        actions_frame.setStyleSheet("""
+            QFrame {
                 background-color: white;
-                border-radius: 10px;
-                padding: 20px;
-                font-size: 13px;
-                line-height: 1.6;
+                border-radius: 8px;
+                padding: 15px;
             }
         """)
-        instructions.setWordWrap(True)
-        content_layout.addWidget(instructions)
+        actions_layout = QVBoxLayout()
 
-        content_layout.addStretch()
+        quick_label = QLabel("🚀 Início Rápido")
+        quick_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #212121;")
+        actions_layout.addWidget(quick_label)
 
-        content_widget.setLayout(content_layout)
-        scroll.setWidget(content_widget)
+        steps = QLabel("""
+        <div style='line-height: 1.4; font-size: 11px;'>
+        <b>1.</b> Aba <b>Importar</b> → Adicionar arquivos OFX<br>
+        <b>2.</b> Configurar opções → <b>Processar</b><br>
+        <b>3.</b> Explorar análises e gráficos<br>
+        <b>4.</b> Exportar dados no formato desejado
+        </div>
+        """)
+        steps.setStyleSheet("color: #616161; background: transparent;")
+        actions_layout.addWidget(steps)
 
-        main_layout.addWidget(scroll)
+        actions_frame.setLayout(actions_layout)
+        main_layout.addWidget(actions_frame)
+
+        main_layout.addStretch()
         self.setLayout(main_layout)
 
     def create_placeholder_cards(self):
-        """Create placeholder stat cards"""
+        """Create placeholder stat cards in compact 2x4 grid"""
         cards_data = [
-            ("💰 Total de Transações", "---", "#1976D2"),
-            ("📈 Créditos", "R$ ---", "#4CAF50"),
-            ("📉 Débitos", "R$ ---", "#F44336"),
-            ("💵 Saldo Líquido", "R$ ---", "#9C27B0"),
+            # Row 1
+            ("💰", "Transações", "---", "", "#1976D2"),
+            ("📈", "Receitas Reais", "R$ ---", "excluindo transferências", "#4CAF50"),
+            ("📉", "Despesas Reais", "R$ ---", "excluindo transferências", "#F44336"),
+            ("💵", "Saldo Líquido", "R$ ---", "receitas - despesas", "#9C27B0"),
+            # Row 2
+            ("🔄", "Transferências", "R$ ---", "entre suas contas", "#FF9800"),
+            ("🏦", "Bancos", "---", "", "#00BCD4"),
+            ("📊", "Contas", "---", "", "#E91E63"),
+            ("📅", "Período", "---", "", "#607D8B"),
         ]
 
-        for i, (title, value, color) in enumerate(cards_data):
-            card = StatCard(title, value, "", color)
-            self.stats_grid.addWidget(card, i // 2, i % 2)
+        for i, (icon, title, value, subtitle, color) in enumerate(cards_data):
+            card = CompactStatCard(icon, title, value, subtitle, color)
+            self.stats_grid.addWidget(card, i // 4, i % 4)
 
     def update_stats(self, df):
         """Update statistics with real data"""
@@ -173,20 +181,48 @@ class HomeTab(QWidget):
         for i in reversed(range(self.stats_grid.count())):
             self.stats_grid.itemAt(i).widget().setParent(None)
 
-        # Calculate stats
-        total_trans = len(df)
-        total_credits = df[df['valor'] > 0]['valor'].sum()
-        total_debits = df[df['valor'] < 0]['valor'].sum()
-        balance = df['valor'].sum()
+        # Detect transfers (PIX, TED, DOC, Transferência)
+        transfer_keywords = ['pix', 'ted', 'doc', 'transferencia', 'transferência',
+                            'transfer', 'conta global', 'entre contas']
 
-        # Create new cards with real data
+        df['is_transfer'] = df['descricao'].str.lower().str.contains('|'.join(transfer_keywords), na=False)
+
+        # Calculate stats excluding transfers
+        df_credits = df[(df['valor'] > 0) & (~df['is_transfer'])]
+        df_debits = df[(df['valor'] < 0) & (~df['is_transfer'])]
+        df_transfers = df[df['is_transfer']]
+
+        total_trans = len(df)
+        real_credits = df_credits['valor'].sum()
+        real_debits = df_debits['valor'].sum()
+        transfers_total = df_transfers['valor'].abs().sum() / 2  # Divide by 2 to avoid double counting
+        balance = real_credits + real_debits  # Debits are already negative
+
+        num_banks = df['banco'].nunique()
+        num_accounts = df['conta'].nunique()
+
+        # Date range
+        if 'data' in df.columns:
+            dates = df['data'].dropna()
+            if len(dates) > 0:
+                period = f"{dates.iloc[0]} a {dates.iloc[-1]}"
+            else:
+                period = "---"
+        else:
+            period = "---"
+
+        # Create cards with real data
         cards_data = [
-            ("💰 Total de Transações", str(total_trans), "#1976D2"),
-            ("📈 Créditos", f"R$ {total_credits:,.2f}", "#4CAF50"),
-            ("📉 Débitos", f"R$ {total_debits:,.2f}", "#F44336"),
-            ("💵 Saldo Líquido", f"R$ {balance:,.2f}", "#9C27B0"),
+            ("💰", "Transações", f"{total_trans:,}", "", "#1976D2"),
+            ("📈", "Receitas Reais", f"R$ {real_credits:,.2f}", "excluindo transferências", "#4CAF50"),
+            ("📉", "Despesas Reais", f"R$ {abs(real_debits):,.2f}", "excluindo transferências", "#F44336"),
+            ("💵", "Saldo Líquido", f"R$ {balance:,.2f}", "receitas - despesas", "#9C27B0"),
+            ("🔄", "Transferências", f"R$ {transfers_total:,.2f}", f"{len(df_transfers)} movimentações", "#FF9800"),
+            ("🏦", "Bancos", str(num_banks), "", "#00BCD4"),
+            ("📊", "Contas", str(num_accounts), "", "#E91E63"),
+            ("📅", "Período", period, "", "#607D8B"),
         ]
 
-        for i, (title, value, color) in enumerate(cards_data):
-            card = StatCard(title, value, "", color)
-            self.stats_grid.addWidget(card, i // 2, i % 2)
+        for i, (icon, title, value, subtitle, color) in enumerate(cards_data):
+            card = CompactStatCard(icon, title, value, subtitle, color)
+            self.stats_grid.addWidget(card, i // 4, i % 4)
