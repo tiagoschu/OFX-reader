@@ -35,10 +35,10 @@ class GapCard(QFrame):
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: white;
-                border-radius: 6px;
-                border-left: 4px solid {color};
-                padding: 10px;
-                margin: 3px;
+                border-radius: 3px;
+                border-left: 3px solid {color};
+                padding: 4px;
+                margin: 1px;
             }}
             QFrame:hover {{
                 background-color: #FAFAFA;
@@ -46,22 +46,17 @@ class GapCard(QFrame):
         """)
 
         layout = QVBoxLayout()
-        layout.setSpacing(4)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(2)
+        layout.setContentsMargins(5, 4, 5, 4)
 
-        # Header: Bank + Account
-        header = QLabel(f"🏦 {self.gap_info['banco']} • Conta {self.gap_info['conta']}")
-        header.setStyleSheet("font-size: 11px; font-weight: bold; color: #212121;")
+        # Compact header with bank, account and period
+        header = QLabel(f"🏦 {self.gap_info['banco'][:30]} • {self.gap_info['conta']} • {self.gap_info['mes_nome']}")
+        header.setStyleSheet("font-size: 9px; font-weight: bold; color: #212121;")
         layout.addWidget(header)
 
-        # Period
-        period = QLabel(f"📅 {self.gap_info['mes_nome']}")
-        period.setStyleSheet("font-size: 10px; color: #616161;")
-        layout.addWidget(period)
-
-        # Message
+        # Message (compact)
         msg = QLabel(self.gap_info['mensagem'])
-        msg.setStyleSheet(f"font-size: 9px; color: {color}; font-weight: 600;")
+        msg.setStyleSheet(f"font-size: 8px; color: {color}; font-weight: 600;")
         msg.setWordWrap(True)
         layout.addWidget(msg)
 
@@ -81,52 +76,46 @@ class AnalysisTab(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(6)
+        main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Header
+        # Compact Header
         header_frame = QFrame()
-        header_frame.setMaximumHeight(70)
+        header_frame.setMaximumHeight(50)
         header_frame.setStyleSheet("""
             QFrame {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #673AB7, stop:1 #512DA8);
-                border-radius: 8px;
+                border-radius: 6px;
             }
         """)
-        header_layout = QVBoxLayout()
-        header_layout.setContentsMargins(15, 10, 15, 10)
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(12, 8, 12, 8)
 
-        title = QLabel("🔍 Análise de Gaps - Períodos Faltantes")
-        title.setStyleSheet("color: white; font-size: 16px; font-weight: bold; background: transparent;")
-
-        subtitle = QLabel("Identifica meses sem movimentação por banco/conta")
-        subtitle.setStyleSheet("color: #E1BEE7; font-size: 10px; background: transparent;")
-
+        title = QLabel("🔍 Análise de Gaps e Duplicatas")
+        title.setStyleSheet("color: white; font-size: 13px; font-weight: bold; background: transparent;")
         header_layout.addWidget(title)
-        header_layout.addWidget(subtitle)
+
+        # Summary inline
+        self.summary_label = QLabel("")
+        self.summary_label.setStyleSheet("color: #E1BEE7; font-size: 9px; background: transparent;")
+        header_layout.addWidget(self.summary_label)
+        header_layout.addStretch()
+
         header_frame.setLayout(header_layout)
         main_layout.addWidget(header_frame)
 
-        # Summary cards
-        self.summary_layout = QHBoxLayout()
-        self.summary_layout.setSpacing(8)
-        main_layout.addLayout(self.summary_layout)
-
-        # Create placeholder summary
-        self.create_placeholder_summary()
-
-        # Filter section
+        # Filter section (more compact)
         filter_frame = QFrame()
         filter_frame.setStyleSheet("""
             QFrame {
                 background-color: white;
-                border-radius: 6px;
-                padding: 10px;
+                border-radius: 4px;
+                padding: 6px;
             }
         """)
         filter_layout = QHBoxLayout()
-        filter_layout.setContentsMargins(10, 8, 10, 8)
+        filter_layout.setContentsMargins(8, 5, 8, 5)
 
         filter_label = QLabel("🔎 Filtrar:")
         filter_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #424242;")
@@ -171,39 +160,39 @@ class AnalysisTab(QWidget):
         filter_frame.setLayout(filter_layout)
         main_layout.addWidget(filter_frame)
 
-        # Duplicates section
+        # Duplicates section (more compact with larger viewing area)
         self.duplicates_frame = QFrame()
         self.duplicates_frame.setStyleSheet("""
             QFrame {
                 background-color: #FFF3E0;
-                border-radius: 6px;
-                border-left: 4px solid #FF9800;
-                padding: 10px;
+                border-radius: 4px;
+                border-left: 3px solid #FF9800;
+                padding: 6px;
             }
         """)
         self.duplicates_frame.setVisible(False)  # Hidden by default
 
         duplicates_main_layout = QVBoxLayout()
-        duplicates_main_layout.setSpacing(8)
-        duplicates_main_layout.setContentsMargins(10, 10, 10, 10)
+        duplicates_main_layout.setSpacing(4)
+        duplicates_main_layout.setContentsMargins(6, 6, 6, 6)
 
-        # Duplicates header
+        # Duplicates header (compact)
         dup_header = QHBoxLayout()
-        dup_title = QLabel("🔄 Duplicatas Detectadas")
-        dup_title.setStyleSheet("font-size: 12px; font-weight: bold; color: #E65100; background: transparent;")
+        dup_title = QLabel("🔄 Duplicatas")
+        dup_title.setStyleSheet("font-size: 11px; font-weight: bold; color: #E65100; background: transparent;")
         dup_header.addWidget(dup_title)
 
         self.dup_count_label = QLabel("0 grupos")
-        self.dup_count_label.setStyleSheet("font-size: 10px; color: #F57C00; background: transparent;")
+        self.dup_count_label.setStyleSheet("font-size: 9px; color: #F57C00; background: transparent;")
         dup_header.addWidget(self.dup_count_label)
         dup_header.addStretch()
 
         duplicates_main_layout.addLayout(dup_header)
 
-        # Duplicates list container (scrollable)
+        # Duplicates list container (scrollable with larger viewing area)
         dup_scroll = QScrollArea()
         dup_scroll.setWidgetResizable(True)
-        dup_scroll.setMaximumHeight(200)
+        dup_scroll.setMaximumHeight(350)  # Increased from 200
         dup_scroll.setStyleSheet("""
             QScrollArea {
                 border: none;
@@ -245,53 +234,6 @@ class AnalysisTab(QWidget):
 
         self.setLayout(main_layout)
 
-    def create_placeholder_summary(self):
-        """Create placeholder summary cards"""
-        cards_data = [
-            ("📊", "Total de Gaps", "---", "#9C27B0"),
-            ("⚠️", "Alta Severidade", "---", "#F44336"),
-            ("⚡", "Baixa Severidade", "---", "#FF9800"),
-            ("✅", "Cobertura", "---", "#4CAF50"),
-        ]
-
-        for icon, title, value, color in cards_data:
-            card = self.create_summary_card(icon, title, value, color)
-            self.summary_layout.addWidget(card)
-
-    def create_summary_card(self, icon, title, value, color):
-        """Create a summary card widget"""
-        card = QFrame()
-        card.setStyleSheet(f"""
-            QFrame {{
-                background-color: white;
-                border-radius: 6px;
-                border-top: 3px solid {color};
-                padding: 8px;
-            }}
-        """)
-
-        layout = QVBoxLayout()
-        layout.setSpacing(4)
-        layout.setContentsMargins(8, 8, 8, 8)
-
-        icon_label = QLabel(icon)
-        icon_label.setStyleSheet("font-size: 20px; background: transparent;")
-        icon_label.setAlignment(Qt.AlignCenter)
-
-        title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 9px; color: #757575; font-weight: 600; background: transparent;")
-        title_label.setAlignment(Qt.AlignCenter)
-
-        value_label = QLabel(value)
-        value_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {color}; background: transparent;")
-        value_label.setAlignment(Qt.AlignCenter)
-
-        layout.addWidget(icon_label)
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
-
-        card.setLayout(layout)
-        return card
 
     def create_placeholder_message(self):
         """Show placeholder message when no data"""
@@ -361,21 +303,16 @@ class AnalysisTab(QWidget):
         self.apply_filter()
 
     def update_summary_cards(self):
-        """Update summary statistics"""
-        # Clear existing cards
-        for i in reversed(range(self.summary_layout.count())):
-            widget = self.summary_layout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
-
+        """Update summary statistics in inline label"""
         # Calculate stats
         total_gaps = len(self.gaps)
         high_severity = len([g for g in self.gaps if g.get('severidade') == 'alta'])
         low_severity = len([g for g in self.gaps if g.get('severidade') == 'baixa'])
+        num_duplicates = len(self.duplicates)
 
         # Calculate coverage (percentage of months without gaps)
+        coverage_str = "N/A"
         if self.analyzer and not self.df.empty:
-            # Get total expected months across all accounts
             total_expected = 0
             for (banco, conta), group in self.df.groupby(['banco', 'conta']):
                 if 'data_dt' in group.columns:
@@ -390,22 +327,13 @@ class AnalysisTab(QWidget):
             if total_expected > 0:
                 coverage = ((total_expected - total_gaps) / total_expected) * 100
                 coverage_str = f"{coverage:.1f}%"
-            else:
-                coverage_str = "N/A"
-        else:
-            coverage_str = "N/A"
 
-        # Create new cards
-        cards_data = [
-            ("📊", "Total de Gaps", str(total_gaps), "#9C27B0"),
-            ("⚠️", "Alta Severidade", str(high_severity), "#F44336"),
-            ("⚡", "Baixa Severidade", str(low_severity), "#FF9800"),
-            ("✅", "Cobertura", coverage_str, "#4CAF50"),
-        ]
+        # Update inline summary
+        summary_text = f"Gaps: {total_gaps} ({high_severity} alta, {low_severity} baixa) • Cobertura: {coverage_str}"
+        if num_duplicates > 0:
+            summary_text += f" • Duplicatas: {num_duplicates} grupos"
 
-        for icon, title, value, color in cards_data:
-            card = self.create_summary_card(icon, title, value, color)
-            self.summary_layout.addWidget(card)
+        self.summary_label.setText(summary_text)
 
     def apply_filter(self):
         """Apply selected filter to gaps"""
@@ -444,26 +372,26 @@ class AnalysisTab(QWidget):
                 gaps_by_account[key] = []
             gaps_by_account[key].append(gap)
 
-        # Display gaps grouped by account
+        # Display gaps grouped by account (compact)
         for (banco, conta), account_gaps in sorted(gaps_by_account.items()):
-            # Account header
+            # Account header (compact)
             header = QFrame()
             header.setStyleSheet("""
                 QFrame {
                     background-color: #EDE7F6;
-                    border-radius: 4px;
-                    padding: 8px;
-                    margin-top: 5px;
+                    border-radius: 3px;
+                    padding: 4px;
+                    margin-top: 3px;
                 }
             """)
             header_layout = QHBoxLayout()
-            header_layout.setContentsMargins(8, 5, 8, 5)
+            header_layout.setContentsMargins(6, 3, 6, 3)
 
-            header_label = QLabel(f"🏦 {banco} • Conta {conta}")
-            header_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #4A148C; background: transparent;")
+            header_label = QLabel(f"🏦 {banco[:35]} • {conta}")
+            header_label.setStyleSheet("font-size: 9px; font-weight: bold; color: #4A148C; background: transparent;")
 
             count_label = QLabel(f"{len(account_gaps)} gap(s)")
-            count_label.setStyleSheet("font-size: 10px; color: #7B1FA2; background: transparent;")
+            count_label.setStyleSheet("font-size: 8px; color: #7B1FA2; background: transparent;")
 
             header_layout.addWidget(header_label)
             header_layout.addStretch()
@@ -496,41 +424,35 @@ class AnalysisTab(QWidget):
         self.duplicates_frame.setVisible(True)
         self.dup_count_label.setText(f"{len(self.duplicates)} grupo(s) de duplicatas")
 
-        # Display each duplicate group
+        # Display each duplicate group (compact)
         for dup_group in self.duplicates:
-            # Create card for duplicate group
+            # Create compact card for duplicate group
             dup_card = QFrame()
             dup_card.setStyleSheet("""
                 QFrame {
                     background-color: white;
-                    border-radius: 4px;
-                    padding: 8px;
-                    margin: 2px;
+                    border-radius: 3px;
+                    padding: 4px;
+                    margin: 1px;
+                    border-left: 2px solid #FF9800;
                 }
             """)
 
             card_layout = QVBoxLayout()
-            card_layout.setSpacing(4)
-            card_layout.setContentsMargins(8, 6, 8, 6)
+            card_layout.setSpacing(2)
+            card_layout.setContentsMargins(4, 3, 4, 3)
 
-            # Header
-            header = QLabel(f"ID: {dup_group['id_transacao']} • {dup_group['banco']} • Conta {dup_group['conta']}")
-            header.setStyleSheet("font-size: 10px; font-weight: bold; color: #E65100; background: transparent;")
+            # Compact header
+            header = QLabel(f"🔑 {dup_group['id_transacao'][:20]}... • {dup_group['banco'][:25]} • {dup_group['conta']}")
+            header.setStyleSheet("font-size: 9px; font-weight: bold; color: #E65100; background: transparent;")
             card_layout.addWidget(header)
 
-            # Count
-            count_label = QLabel(f"📊 {dup_group['count']} ocorrências encontradas (mantida apenas a primeira)")
-            count_label.setStyleSheet("font-size: 9px; color: #666; background: transparent;")
-            card_layout.addWidget(count_label)
-
-            # Show all occurrences
+            # Show all occurrences (more compact)
             for i, occurrence in enumerate(dup_group['occurrences']):
-                status = "✅ Mantida" if i == 0 else "🗑️ Removida"
+                status = "✅" if i == 0 else "🗑️"
                 occ_label = QLabel(
-                    f"{status}: {occurrence.get('data', 'N/A')} - "
-                    f"R$ {occurrence.get('valor', 0):,.2f} - "
-                    f"{occurrence.get('descricao', 'N/A')[:40]}... - "
-                    f"Arquivo: {occurrence.get('arquivo_origem', 'N/A')}"
+                    f"{status} {occurrence.get('data', 'N/A')} • R$ {occurrence.get('valor', 0):,.2f} • "
+                    f"{occurrence.get('descricao', 'N/A')[:35]}... • {occurrence.get('arquivo_origem', 'N/A')[:25]}"
                 )
                 occ_label.setStyleSheet(f"font-size: 8px; color: {'#4CAF50' if i == 0 else '#999'}; background: transparent;")
                 occ_label.setWordWrap(True)
