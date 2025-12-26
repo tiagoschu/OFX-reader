@@ -264,8 +264,6 @@ class ExpandableCategoryWidget(QFrame):
             }
         """)
 
-        self.populate_table()
-
         content_layout.addWidget(self.table)
         self.content_frame.setLayout(content_layout)
         main_layout.addWidget(self.content_frame)
@@ -446,9 +444,14 @@ class UncategorizedWidget(QFrame):
             }
         """)
 
-        self.populate_table()
-
         content_layout.addWidget(self.table)
+
+        # Warning label container (hidden until needed)
+        self.warning_label = QLabel("")
+        self.warning_label.setStyleSheet("font-size: 8px; color: #E65100; padding: 4px;")
+        self.warning_label.setVisible(False)
+        content_layout.addWidget(self.warning_label)
+
         self.content_frame.setLayout(content_layout)
         main_layout.addWidget(self.content_frame)
 
@@ -513,11 +516,12 @@ class UncategorizedWidget(QFrame):
 
         self.table.resizeColumnsToContents()
 
+        # Update warning label
         if len(uncategorized) > 100:
-            from PyQt5.QtWidgets import QLabel
-            warning = QLabel(f"Mostrando 100 de {len(uncategorized)} transações não categorizadas")
-            warning.setStyleSheet("font-size: 8px; color: #E65100; padding: 4px;")
-            self.content_frame.layout().addWidget(warning)
+            self.warning_label.setText(f"Mostrando 100 de {len(uncategorized)} transações não categorizadas")
+            self.warning_label.setVisible(True)
+        else:
+            self.warning_label.setVisible(False)
 
     def categorize_transaction(self, transaction):
         """Categorize an uncategorized transaction"""
