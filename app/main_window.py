@@ -17,6 +17,7 @@ from app.tabs.tab_analysis import AnalysisTab
 from app.tabs.tab_charts import ChartsTab
 from app.tabs.tab_categories import CategoriesTab
 from app.tabs.tab_reports import ReportsTab
+from app.tabs.tab_dre import DRETab
 from app.tabs.tab_export import ExportTab
 from app.tabs.tab_config import ConfigTab
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
         self.tab_charts = ChartsTab()
         self.tab_categories = CategoriesTab()
         self.tab_reports = ReportsTab()
+        self.tab_dre = DRETab()
         self.tab_export = ExportTab()
         self.tab_settings = ConfigTab()
 
@@ -65,6 +67,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_charts, "📈 Gráficos")
         self.tabs.addTab(self.tab_categories, "🎯 Categorias")
         self.tabs.addTab(self.tab_reports, "📋 Relatórios")
+        self.tabs.addTab(self.tab_dre, "💼 DRE")
         self.tabs.addTab(self.tab_export, "💾 Exportar")
         self.tabs.addTab(self.tab_settings, "⚙️ Config")
 
@@ -136,6 +139,9 @@ class MainWindow(QMainWindow):
 
         # Update reports tab with data
         self.tab_reports.update_data(df)
+
+        # Update DRE tab with data
+        self.tab_dre.update_data(df)
 
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
