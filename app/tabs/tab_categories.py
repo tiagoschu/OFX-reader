@@ -534,6 +534,9 @@ class UncategorizedWidget(QFrame):
 class CategoriesTab(QWidget):
     """Interactive categories management tab"""
 
+    # Signal emitted when recategorization is complete (passes updated dataframe)
+    data_recategorized = pyqtSignal(object)
+
     def __init__(self):
         super().__init__()
         self.categories = CATEGORIES.copy()
@@ -878,6 +881,9 @@ class CategoriesTab(QWidget):
 
             # Refresh display
             self.refresh_categories()
+
+            # Emit signal to update all tabs with recategorized data
+            self.data_recategorized.emit(self.df)
 
             QMessageBox.information(
                 self,

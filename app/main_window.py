@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
 
         # Connect signals
         self.tab_import.data_processed.connect(self.on_data_processed)
+        self.tab_categories.data_recategorized.connect(self.on_data_recategorized)
 
         # Set central widget
         self.setCentralWidget(self.tabs)
@@ -181,6 +182,25 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
 
         self.statusBar().showMessage(f"Processados {len(df)} transações", 5000)
+
+    def on_data_recategorized(self, df):
+        """Handle data recategorized signal from Categories tab"""
+        self.df = df
+
+        # Update project with recategorized data
+        if self.project:
+            self.project.set_dataframe(df)
+
+        # Update all tabs with recategorized data
+        self.tab_home.update_stats(df)
+        self.tab_analysis.update_data(df, self.processor.duplicates if self.processor else [])
+        self.tab_charts.update_data(df)
+        self.tab_categories.update_data(df)
+        self.tab_export.update_data(df)
+        self.tab_reports.update_data(df)
+        self.tab_dre.update_data(df)
+
+        self.statusBar().showMessage(f"Recategorizadas {len(df)} transações", 5000)
 
     def apply_project_config(self):
         """Apply project configuration to tabs"""
