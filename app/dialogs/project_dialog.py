@@ -12,6 +12,7 @@ from datetime import datetime
 import os
 
 from core.project import Project
+from app.dialogs.project_config_dialog import ProjectConfigDialog
 
 
 class ProjectDialog(QDialog):
@@ -267,9 +268,24 @@ class ProjectDialog(QDialog):
 
     def on_new_project(self):
         """Create a new project"""
-        self.project = Project()
-        self.project_path = None
-        self.accept()
+        # Show configuration dialog
+        config_dialog = ProjectConfigDialog(self)
+
+        if config_dialog.exec_() == QDialog.Accepted:
+            config = config_dialog.get_config()
+
+            # Create new project with configuration
+            self.project = Project()
+            self.project.data['config'] = {
+                'person_type': config['person_type'],
+                'business_sector': config['business_sector'],
+                'category_preset': config['category_preset'],
+            }
+            self.project.data['metadata']['name'] = config['name']
+
+            self.project_path = None
+            self.accept()
+        # If user cancels config dialog, stay on project dialog
 
     def on_open_file(self):
         """Open project from file dialog"""
