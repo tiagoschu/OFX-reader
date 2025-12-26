@@ -244,7 +244,8 @@ class ExpandableCategoryWidget(QFrame):
         self.table.setHorizontalHeaderLabels(['Data', 'Descrição', 'Valor', 'Banco', 'Ação'])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.setMaximumHeight(200)
+        self.table.setMinimumHeight(400)
+        self.table.setMaximumHeight(500)
         self.table.setStyleSheet("""
             QTableWidget {
                 background-color: white;
@@ -427,7 +428,8 @@ class UncategorizedWidget(QFrame):
         self.table.setHorizontalHeaderLabels(['Data', 'Descrição', 'Valor', 'Banco', 'Ação'])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.setMaximumHeight(300)
+        self.table.setMinimumHeight(400)
+        self.table.setMaximumHeight(500)
         self.table.setStyleSheet("""
             QTableWidget {
                 background-color: white;

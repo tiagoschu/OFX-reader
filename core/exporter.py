@@ -279,6 +279,7 @@ NEWFILEUID:NONE
         """Generate complete financial summary report"""
         from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         story = []
 
@@ -330,6 +331,7 @@ NEWFILEUID:NONE
         """Generate monthly analysis report"""
         from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         story = []
         story.append(Paragraph("📅 Análise Mensal", title_style))
@@ -392,6 +394,7 @@ NEWFILEUID:NONE
         """Generate bank comparison report"""
         from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         story = []
         story.append(Paragraph("🏦 Análise por Banco", title_style))
@@ -451,6 +454,7 @@ NEWFILEUID:NONE
         """Generate category analysis report"""
         from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         story = []
         story.append(Paragraph("📊 Análise por Categoria", title_style))
@@ -509,6 +513,7 @@ NEWFILEUID:NONE
     def _generate_detailed_report(self, df, styles, title_style):
         """Generate detailed transaction list"""
         from reportlab.platypus import Paragraph, Spacer
+        from reportlab.lib.units import cm
 
         story = []
         story.append(Paragraph("🔍 Transações Detalhadas", title_style))
@@ -529,6 +534,7 @@ NEWFILEUID:NONE
         """Generate gaps and inconsistencies report"""
         from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         story = []
         story.append(Paragraph("⚠️ Gaps e Inconsistências", title_style))
@@ -577,6 +583,7 @@ NEWFILEUID:NONE
         """Add transaction table to report"""
         from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
         from reportlab.lib import colors
+        from reportlab.lib.units import cm
 
         if df.empty:
             return Paragraph("Nenhuma transação.", styles['Normal'])
