@@ -408,8 +408,15 @@ class DRETab(QWidget):
             ("(=) LUCRO LÍQUIDO DO EXERCÍCIO", d.get('lucro_liquido', 0), True, '#1976D2'),
         ]
 
+        # Filter out rows with zero values (but keep totals)
+        # Only hide intermediate items (non-totals) that have zero value
         for row_data in rows:
-            self.add_dre_row(*row_data)
+            description, value, is_total, bg_color = row_data
+
+            # Show all totals (is_total=True) regardless of value
+            # For non-totals, only show if value is not zero (with small tolerance for floating point)
+            if is_total or abs(value) > 0.01:
+                self.add_dre_row(description, value, is_total, bg_color)
 
     def add_dre_row(self, description, value, is_total, bg_color):
         """Add a row to the DRE table"""
@@ -521,23 +528,38 @@ class DRETab(QWidget):
             # DRE Table
             d = self.dre_data
 
-            table_data = [
-                ['Descrição', 'Valor (R$)'],
-                ['RECEITA BRUTA', f"R$ {d.get('receita_bruta', 0):,.2f}"],
-                ['(-) Deduções e Impostos', f"R$ {d.get('deducoes', 0):,.2f}"],
-                ['(=) RECEITA LÍQUIDA', f"R$ {d.get('receita_liquida', 0):,.2f}"],
-                ['(-) CMV', f"R$ {d.get('cmv', 0):,.2f}"],
-                ['(=) LUCRO BRUTO', f"R$ {d.get('lucro_bruto', 0):,.2f}"],
-                ['(-) Despesas Operacionais', f"R$ {d.get('despesas_operacionais', 0):,.2f}"],
-                ['(=) LUCRO OPERACIONAL', f"R$ {d.get('lucro_operacional', 0):,.2f}"],
-                ['(+/-) Resultado Financeiro', f"R$ {d.get('resultado_financeiro', 0):,.2f}"],
-                ['(=) LUCRO ANTES DO IR', f"R$ {d.get('lucro_antes_ir', 0):,.2f}"],
-                ['(-) IR e CSLL', f"R$ {d.get('ir_csll', 0):,.2f}"],
-                ['(=) LUCRO LÍQUIDO', f"R$ {d.get('lucro_liquido', 0):,.2f}"],
+            # Build table data with filtering (same logic as populate_dre_table)
+            rows = [
+                ('RECEITA BRUTA', d.get('receita_bruta', 0), True),
+                ('(-) Deduções e Impostos', d.get('deducoes', 0), False),
+                ('(=) RECEITA LÍQUIDA', d.get('receita_liquida', 0), True),
+                ('(-) CMV', d.get('cmv', 0), False),
+                ('(=) LUCRO BRUTO', d.get('lucro_bruto', 0), True),
+                ('(-) Despesas Operacionais', d.get('despesas_operacionais', 0), False),
+                ('(=) LUCRO OPERACIONAL', d.get('lucro_operacional', 0), True),
+                ('(+/-) Resultado Financeiro', d.get('resultado_financeiro', 0), False),
+                ('(=) LUCRO ANTES DO IR', d.get('lucro_antes_ir', 0), True),
+                ('(-) IR e CSLL', d.get('ir_csll', 0), False),
+                ('(=) LUCRO LÍQUIDO', d.get('lucro_liquido', 0), True),
             ]
 
-            t = Table(table_data, colWidths=[12*cm, 5*cm])
-            t.setStyle(TableStyle([
+            # Header
+            table_data = [['Descrição', 'Valor (R$)']]
+            total_row_indices = []  # Track which rows are totals for styling
+
+            # Add rows, filtering out zero-value non-totals
+            for row in rows:
+                description, value, is_total = row
+
+                # Show all totals (is_total=True) regardless of value
+                # For non-totals, only show if value is not zero
+                if is_total or abs(value) > 0.01:
+                    table_data.append([description, f"R$ {value:,.2f}"])
+                    if is_total:
+                        total_row_indices.append(len(table_data) - 1)  # Track row index for styling
+
+            # Build table styles
+            table_styles = [
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1976D2')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
@@ -545,18 +567,20 @@ class DRETab(QWidget):
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-
-                # Highlight total rows
-                ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),  # Receita Bruta
-                ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),  # Receita Líquida
-                ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),  # Lucro Bruto
-                ('FONTNAME', (0, 7), (-1, 7), 'Helvetica-Bold'),  # Lucro Operacional
-                ('FONTNAME', (0, 9), (-1, 9), 'Helvetica-Bold'),  # Lucro antes IR
-                ('FONTNAME', (0, 11), (-1, 11), 'Helvetica-Bold'), # Lucro Líquido
-
-                ('BACKGROUND', (0, 11), (-1, 11), colors.HexColor('#E3F2FD')),
                 ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-            ]))
+            ]
+
+            # Add bold styling for all total rows
+            for row_idx in total_row_indices:
+                table_styles.append(('FONTNAME', (0, row_idx), (-1, row_idx), 'Helvetica-Bold'))
+
+            # Highlight final row (Lucro Líquido) if present
+            if len(table_data) > 1:
+                last_row = len(table_data) - 1
+                table_styles.append(('BACKGROUND', (0, last_row), (-1, last_row), colors.HexColor('#E3F2FD')))
+
+            t = Table(table_data, colWidths=[12*cm, 5*cm])
+            t.setStyle(TableStyle(table_styles))
 
             story.append(t)
 
