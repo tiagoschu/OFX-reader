@@ -7,21 +7,26 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.constants import CATEGORIES
+from utils.constants import CATEGORIES, CATEGORY_PRESETS
 import pandas as pd
 
 
 class TransactionCategorizer:
     """Categorizes transactions based on keywords in descriptions"""
 
-    def __init__(self, custom_rules=None):
+    def __init__(self, custom_rules=None, category_preset=None):
         """
         Initialize categorizer
 
         Args:
             custom_rules: Dict of custom categorization rules
+            category_preset: Name of category preset to use ('personal', 'business', 'travel_agency', etc.)
         """
-        self.categories = CATEGORIES.copy()
+        # Use specified preset or default
+        if category_preset and category_preset in CATEGORY_PRESETS:
+            self.categories = CATEGORY_PRESETS[category_preset]['categories'].copy()
+        else:
+            self.categories = CATEGORIES.copy()
 
         if custom_rules:
             self.categories.update(custom_rules)

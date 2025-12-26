@@ -25,10 +25,11 @@ class ProcessThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal(object, object)  # df, processor
 
-    def __init__(self, files, remove_duplicates):
+    def __init__(self, files, remove_duplicates, category_preset=None):
         super().__init__()
         self.files = files
         self.remove_duplicates = remove_duplicates
+        self.category_preset = category_preset
 
     def run(self):
         processor = OFXProcessor()
@@ -36,10 +37,10 @@ class ProcessThread(QThread):
 
         df = processor.process_multiple_files(self.files, self.remove_duplicates)
 
-        # Add categorization
+        # Add categorization with appropriate category preset
         if not df.empty:
             self.progress.emit("Categorizando transações...")
-            categorizer = TransactionCategorizer()
+            categorizer = TransactionCategorizer(category_preset=self.category_preset)
             df = categorizer.categorize_dataframe(df)
 
         self.finished.emit(df, processor)
@@ -55,7 +56,12 @@ class ImportTab(QWidget):
         self.selected_files = []
         self.df_result = None
         self.processor = None
+        self.category_preset = None  # Will be set by main window
         self.init_ui()
+
+    def set_category_preset(self, preset):
+        """Set the category preset to use for categorization"""
+        self.category_preset = preset
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -227,7 +233,8 @@ class ImportTab(QWidget):
         # Start processing thread
         self.thread = ProcessThread(
             self.selected_files,
-            self.cb_remove_duplicates.isChecked()
+            self.cb_remove_duplicates.isChecked(),
+            self.category_preset
         )
         self.thread.progress.connect(self.update_progress)
         self.thread.finished.connect(self.on_processing_finished)

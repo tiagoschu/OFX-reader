@@ -36,6 +36,9 @@ class MainWindow(QMainWindow):
         self.project_path = project_path
         self.init_ui()
 
+        # Apply project configuration to tabs
+        self.apply_project_config()
+
         # Load project data if provided
         if project and project.get_dataframe() is not None:
             self.load_from_project()
@@ -179,6 +182,15 @@ class MainWindow(QMainWindow):
 
         self.statusBar().showMessage(f"Processados {len(df)} transações", 5000)
 
+    def apply_project_config(self):
+        """Apply project configuration to tabs"""
+        if self.project:
+            config = self.project.get_config()
+            category_preset = config.get('category_preset', 'personal')
+
+            # Set category preset for import tab (used when importing new data)
+            self.tab_import.set_category_preset(category_preset)
+
     def load_from_project(self):
         """Load data from current project"""
         df = self.project.get_dataframe()
@@ -216,6 +228,10 @@ class MainWindow(QMainWindow):
             # Clear all tabs
             self.tab_home.update_stats(None)
             self.setWindowTitle(f"{APP_NAME} v{VERSION}")
+
+            # Apply new project config
+            self.apply_project_config()
+
             self.statusBar().showMessage("Novo projeto criado", 3000)
 
     def on_open_project(self):
@@ -234,7 +250,13 @@ class MainWindow(QMainWindow):
             if success:
                 self.project = project
                 self.project_path = file_path
+
+                # Apply project config first
+                self.apply_project_config()
+
+                # Then load data
                 self.load_from_project()
+
                 self.statusBar().showMessage(f"Projeto aberto: {file_path}", 5000)
             else:
                 QMessageBox.critical(self, "Erro ao Abrir Projeto", message)
