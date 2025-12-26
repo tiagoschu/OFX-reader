@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QFrame, QScrollArea, QComboBox, QPushButton,
                              QGridLayout)
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings
 import sys
 import os
 import pandas as pd
@@ -51,15 +51,37 @@ class ChartWidget(QFrame):
         # Web view for Plotly
         self.web_view = QWebEngineView()
         self.web_view.setMinimumHeight(350)
+
+        # Configure settings for Plotly to work properly
+        settings = self.web_view.settings()
+        settings.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
+        settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
+        settings.setAttribute(QWebEngineSettings.ErrorPageEnabled, True)
+        settings.setAttribute(QWebEngineSettings.PluginsEnabled, True)
+
         layout.addWidget(self.web_view)
 
         self.setLayout(layout)
 
     def set_chart(self, fig):
         """Set Plotly figure to display"""
-        # Use include_plotlyjs=True to embed the library (works offline, no CDN issues)
-        html = fig.to_html(include_plotlyjs=True, config={'responsive': True})
-        self.web_view.setHtml(html)
+        try:
+            # Use include_plotlyjs=True to embed the library (works offline, no CDN issues)
+            # Full page mode for better rendering
+            html = fig.to_html(
+                include_plotlyjs=True,
+                config={
+                    'responsive': True,
+                    'displayModeBar': True,
+                    'displaylogo': False
+                },
+                full_html=True,
+                validate=True
+            )
+            # Set HTML with base URL to ensure proper resource loading
+            self.web_view.setHtml(html, QUrl("file:///"))
+        except Exception as e:
+            self.show_message(f"Erro ao renderizar gráfico: {str(e)}")
 
     def show_message(self, message):
         """Show a message instead of chart"""
