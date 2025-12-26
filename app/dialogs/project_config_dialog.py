@@ -18,7 +18,7 @@ class ProjectConfigDialog(QDialog):
         super().__init__(parent)
         self.person_type = 'fisica'
         self.business_sector = 'general'
-        self.category_preset = 'personal'
+        self.category_preset = 'personal'  # Automatically determined
         self.project_name = ''
         self.project_description = ''
         self.init_ui()
@@ -26,7 +26,7 @@ class ProjectConfigDialog(QDialog):
     def init_ui(self):
         self.setWindowTitle("Configuração do Projeto")
         self.setModal(True)
-        self.setMinimumSize(600, 550)
+        self.setMinimumSize(600, 480)
 
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -38,7 +38,7 @@ class ProjectConfigDialog(QDialog):
         header.setStyleSheet("color: #1976D2; margin-bottom: 10px;")
         layout.addWidget(header)
 
-        subtitle = QLabel("Configure o tipo de pessoa e plano de categorias para seu projeto")
+        subtitle = QLabel("O plano de contas será configurado automaticamente de acordo com o tipo selecionado")
         subtitle.setStyleSheet("color: #666; font-size: 10px; margin-bottom: 15px;")
         layout.addWidget(subtitle)
 
@@ -127,10 +127,24 @@ class ProjectConfigDialog(QDialog):
 
         self.cb_business_sector.setStyleSheet("""
             QComboBox {
-                font-size: 10px;
-                padding: 8px;
+                font-size: 11px;
+                padding: 10px;
                 border: 1px solid #CFD8DC;
                 border-radius: 4px;
+                min-height: 35px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                font-size: 11px;
+                padding: 5px;
+                selection-background-color: #E3F2FD;
             }
         """)
         self.cb_business_sector.currentIndexChanged.connect(self.on_business_sector_changed)
@@ -151,52 +165,18 @@ class ProjectConfigDialog(QDialog):
         self.sector_group.setLayout(sector_layout)
         layout.addWidget(self.sector_group)
 
-        # Category Preset
-        preset_group = QGroupBox("📊 Plano de Categorias")
-        preset_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 11px;
-                font-weight: bold;
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 12px;
-            }
-        """)
-        preset_layout = QVBoxLayout()
-        preset_layout.setSpacing(8)
-
-        self.cb_category_preset = QComboBox()
-        for preset_key, preset_info in CATEGORY_PRESETS.items():
-            icon = "📋" if preset_key == "personal" else "💼"
-            self.cb_category_preset.addItem(f"{icon} {preset_info['name']}", preset_key)
-
-        self.cb_category_preset.setStyleSheet("""
-            QComboBox {
-                font-size: 10px;
-                padding: 8px;
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-            }
-        """)
-        self.cb_category_preset.currentIndexChanged.connect(self.on_preset_changed)
-        preset_layout.addWidget(self.cb_category_preset)
-
-        # Preset info
-        self.preset_info = QLabel()
-        self.preset_info.setStyleSheet("""
-            font-size: 9px;
+        # Auto-configuration info display (replaces manual category preset selection)
+        self.auto_config_info = QLabel()
+        self.auto_config_info.setStyleSheet("""
+            font-size: 10px;
             color: #1976D2;
-            padding: 8px;
+            padding: 12px;
             background-color: #E3F2FD;
-            border-radius: 3px;
-            border-left: 3px solid #1976D2;
+            border-radius: 4px;
+            border-left: 4px solid #1976D2;
         """)
-        self.preset_info.setWordWrap(True)
-        preset_layout.addWidget(self.preset_info)
-
-        preset_group.setLayout(preset_layout)
-        layout.addWidget(preset_group)
+        self.auto_config_info.setWordWrap(True)
+        layout.addWidget(self.auto_config_info)
 
         # Info box
         info_frame = QFrame()
@@ -211,8 +191,9 @@ class ProjectConfigDialog(QDialog):
         info_layout = QVBoxLayout()
 
         info_label = QLabel(
-            "💡 <b>Importante:</b> O plano de categorias define como suas transações serão "
-            "classificadas e como o DRE será calculado. Escolha o mais adequado ao seu tipo de negócio."
+            "⚡ <b>Importante:</b> O plano de categorias e estrutura do DRE serão configurados "
+            "automaticamente de acordo com o tipo de pessoa e ramo de negócio selecionados. "
+            "Você pode recategorizar os dados a qualquer momento na aba Categorias."
         )
         info_label.setStyleSheet("font-size: 9px; color: #F57F17; background: transparent;")
         info_label.setWordWrap(True)
@@ -267,8 +248,7 @@ class ProjectConfigDialog(QDialog):
 
         # Initialize
         self.on_person_type_changed()
-        self.on_business_sector_changed()
-        self.on_preset_changed()
+        self.update_auto_config_display()
 
     def on_person_type_changed(self):
         """Handle person type change"""
@@ -278,40 +258,58 @@ class ProjectConfigDialog(QDialog):
         # Show/hide business sector
         self.sector_group.setVisible(is_juridica)
 
-        # Auto-select appropriate preset
+        # Automatically determine category preset
         if is_juridica:
-            # For juridica, use business or travel_agency preset
-            self.cb_category_preset.setCurrentIndex(1)  # business
+            # For juridica, preset depends on business sector
+            self.on_business_sector_changed()
         else:
-            # For fisica, use personal preset
-            self.cb_category_preset.setCurrentIndex(0)  # personal
+            # For fisica, always use personal preset
+            self.category_preset = 'personal'
+            self.update_auto_config_display()
 
     def on_business_sector_changed(self):
-        """Handle business sector change"""
+        """Handle business sector change and automatically set category preset"""
         sector_key = self.cb_business_sector.currentData()
         if sector_key and sector_key in BUSINESS_SECTORS:
             sector_info = BUSINESS_SECTORS[sector_key]
             self.business_sector = sector_key
             self.sector_desc.setText(f"📌 {sector_info['description']}")
 
-            # Auto-select matching preset
-            preset_key = sector_info.get('preset', 'business')
-            preset_index = list(CATEGORY_PRESETS.keys()).index(preset_key) if preset_key in CATEGORY_PRESETS else 1
-            self.cb_category_preset.setCurrentIndex(preset_index)
+            # Automatically determine category preset based on business sector
+            self.category_preset = sector_info.get('preset', 'business')
 
-    def on_preset_changed(self):
-        """Handle preset change"""
-        preset_key = self.cb_category_preset.currentData()
-        if preset_key and preset_key in CATEGORY_PRESETS:
-            preset_info = CATEGORY_PRESETS[preset_key]
-            self.category_preset = preset_key
+            # Update the auto-config display
+            self.update_auto_config_display()
 
+    def update_auto_config_display(self):
+        """Update the auto-configuration info display"""
+        if self.category_preset and self.category_preset in CATEGORY_PRESETS:
+            preset_info = CATEGORY_PRESETS[self.category_preset]
             num_categories = len(preset_info['categories'])
-            self.preset_info.setText(
-                f"📊 {preset_info['description']}\n"
-                f"✓ {num_categories} categorias disponíveis\n"
-                f"✓ DRE adaptado para este tipo de negócio"
-            )
+
+            person_type_label = "👤 Pessoa Física" if self.person_type == 'fisica' else "🏢 Pessoa Jurídica"
+
+            if self.person_type == 'juridica':
+                sector_info = BUSINESS_SECTORS.get(self.business_sector, {})
+                sector_label = sector_info.get('name', 'Geral')
+                config_text = (
+                    f"<b>✓ Configuração Automática:</b><br>"
+                    f"• Tipo: {person_type_label}<br>"
+                    f"• Ramo: {sector_label}<br>"
+                    f"• Plano: {preset_info['name']}<br>"
+                    f"• {num_categories} categorias pré-configuradas<br>"
+                    f"• DRE adaptado para este tipo de negócio"
+                )
+            else:
+                config_text = (
+                    f"<b>✓ Configuração Automática:</b><br>"
+                    f"• Tipo: {person_type_label}<br>"
+                    f"• Plano: {preset_info['name']}<br>"
+                    f"• {num_categories} categorias pré-configuradas<br>"
+                    f"• DRE para controle pessoal"
+                )
+
+            self.auto_config_info.setText(config_text)
 
     def get_config(self):
         """Get the selected configuration"""
