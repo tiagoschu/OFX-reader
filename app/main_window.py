@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
 
         # Update project with recategorized data
         if self.project:
-            self.project.set_dataframe(df)
+            self.project.data['dataframe'] = df
 
         # Update all tabs with recategorized data
         self.tab_home.update_stats(df)
