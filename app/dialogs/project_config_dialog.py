@@ -7,9 +7,13 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QRadioButton, QComboBox, QGroupBox,
                              QLineEdit, QButtonGroup, QFrame, QScrollArea, QWidget,
                              QTabWidget, QTextBrowser, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QSizePolicy)
+                             QHeaderView, QSizePolicy, QAbstractItemView, QFileDialog,
+                             QMessageBox)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
+import platform
+import subprocess
+import os
 
 from utils.constants import CATEGORY_PRESETS, BUSINESS_SECTORS
 
@@ -391,7 +395,7 @@ class ProjectConfigDialog(QDialog):
         self.auto_info.setText(text)
 
     def show_preview(self):
-        """Show preview dialog with categories and DRE"""
+        """Show editable preview dialog with categories and DRE"""
         from utils.dre_structures import get_dre_structure
 
         if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
@@ -399,10 +403,15 @@ class ProjectConfigDialog(QDialog):
 
         preset_info = CATEGORY_PRESETS[self.category_preset]
 
+        # Create editable copy of categories
+        editable_categories = {}
+        for cat_name, cat_data in preset_info['categories'].items():
+            editable_categories[cat_name] = cat_data.copy()
+
         # Create dialog
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Preview: {preset_info['name']}")
-        dialog.resize(950, 700)
+        dialog.setWindowTitle(f"Editar: {preset_info['name']}")
+        dialog.resize(1050, 700)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
@@ -413,8 +422,8 @@ class ProjectConfigDialog(QDialog):
         header.setStyleSheet("color: #1976D2; padding: 10px; background: #E3F2FD; border-radius: 4px;")
         layout.addWidget(header)
 
-        subtitle = QLabel(f"Total: {len(preset_info['categories'])} categorias")
-        subtitle.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
+        subtitle = QLabel(f"Você pode adicionar, editar ou remover categorias")
+        subtitle.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
         layout.addWidget(subtitle)
 
         # Tabs
@@ -435,15 +444,45 @@ class ProjectConfigDialog(QDialog):
             }
         """)
 
+        # Categories tab with editable table
+        cat_tab = QWidget()
+        cat_layout = QVBoxLayout()
+        cat_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Toolbar
+        toolbar = QHBoxLayout()
+        btn_add = QPushButton("➕ Adicionar Categoria")
+        btn_add.setStyleSheet("""
+            QPushButton {
+                background: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 15px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #45A049;
+            }
+        """)
+
+        toolbar.addWidget(btn_add)
+        toolbar.addStretch()
+        cat_layout.addLayout(toolbar)
+
         # Categories table
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(['Categoria', 'Tipo', 'Keywords', 'Ícone'])
+        table.setColumnCount(6)
+        table.setHorizontalHeaderLabels(['Categoria', 'Tipo', 'Keywords', 'Ícone', 'Código', 'Ação'])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
         table.setAlternatingRowColors(True)
+        table.setEditTriggers(QAbstractItemView.DoubleClick | QAbstractItemView.EditKeyPressed)
         table.setStyleSheet("""
             QTableWidget {
                 font-size: 11px;
@@ -457,22 +496,104 @@ class ProjectConfigDialog(QDialog):
             }
         """)
 
-        # Populate categories
-        table.setRowCount(len(preset_info['categories']))
-        for row, (cat_name, cat_data) in enumerate(sorted(preset_info['categories'].items())):
-            table.setItem(row, 0, QTableWidgetItem(cat_name))
-            table.setItem(row, 1, QTableWidgetItem(cat_data.get('type', 'other')))
+        def populate_table():
+            """Populate table with current categories"""
+            table.setRowCount(len(editable_categories))
+            for row, (cat_name, cat_data) in enumerate(sorted(editable_categories.items())):
+                # Category name (editable)
+                table.setItem(row, 0, QTableWidgetItem(cat_name))
 
-            keywords = cat_data.get('keywords', [])
-            kw_text = ', '.join(keywords[:5])
-            if len(keywords) > 5:
-                kw_text += f' ... (+{len(keywords)-5})'
-            table.setItem(row, 2, QTableWidgetItem(kw_text))
-            table.setItem(row, 3, QTableWidgetItem(cat_data.get('icon', '📁')))
+                # Type (editable)
+                table.setItem(row, 1, QTableWidgetItem(cat_data.get('type', 'other')))
 
-        tabs.addTab(table, "📂 Categorias")
+                # Keywords (editable, full list)
+                keywords = cat_data.get('keywords', [])
+                kw_text = '; '.join(keywords)
+                table.setItem(row, 2, QTableWidgetItem(kw_text))
 
-        # DRE structure
+                # Icon (editable)
+                table.setItem(row, 3, QTableWidgetItem(cat_data.get('icon', '📁')))
+
+                # Code (editable)
+                table.setItem(row, 4, QTableWidgetItem(cat_data.get('code', '')))
+
+                # Delete button
+                btn_delete = QPushButton("🗑️")
+                btn_delete.setStyleSheet("""
+                    QPushButton {
+                        background: #F44336;
+                        color: white;
+                        border: none;
+                        border-radius: 3px;
+                        padding: 5px;
+                        font-size: 10px;
+                    }
+                    QPushButton:hover {
+                        background: #D32F2F;
+                    }
+                """)
+                btn_delete.setProperty('row', row)
+                btn_delete.setProperty('cat_name', cat_name)
+                btn_delete.clicked.connect(lambda checked, r=row, name=cat_name: delete_category(name))
+                table.setCellWidget(row, 5, btn_delete)
+
+        def add_category():
+            """Add new category row"""
+            new_name = f"Nova Categoria {len(editable_categories) + 1}"
+            editable_categories[new_name] = {
+                'type': 'other',
+                'keywords': [],
+                'icon': '📁',
+                'code': '',
+                'color': '#757575'
+            }
+            populate_table()
+
+        def delete_category(cat_name):
+            """Delete category"""
+            if cat_name in editable_categories:
+                del editable_categories[cat_name]
+                populate_table()
+
+        def save_edits():
+            """Save table edits back to editable_categories"""
+            # Clear and rebuild
+            temp_cats = {}
+            for row in range(table.rowCount()):
+                name_item = table.item(row, 0)
+                type_item = table.item(row, 1)
+                kw_item = table.item(row, 2)
+                icon_item = table.item(row, 3)
+                code_item = table.item(row, 4)
+
+                if name_item:
+                    name = name_item.text().strip()
+                    if name:
+                        # Parse keywords
+                        kw_text = kw_item.text() if kw_item else ''
+                        keywords = [kw.strip() for kw in kw_text.split(';') if kw.strip()]
+
+                        temp_cats[name] = {
+                            'type': type_item.text() if type_item else 'other',
+                            'keywords': keywords,
+                            'icon': icon_item.text() if icon_item else '📁',
+                            'code': code_item.text() if code_item else '',
+                            'color': '#757575'
+                        }
+
+            return temp_cats
+
+        # Connect buttons
+        btn_add.clicked.connect(add_category)
+
+        # Initial populate
+        populate_table()
+
+        cat_layout.addWidget(table)
+        cat_tab.setLayout(cat_layout)
+        tabs.addTab(cat_tab, "📂 Categorias (Editável)")
+
+        # DRE structure (read-only)
         dre_browser = QTextBrowser()
         dre_browser.setStyleSheet("font-size: 12px; padding: 10px;")
         dre_struct = get_dre_structure(self.category_preset)
@@ -489,9 +610,28 @@ class ProjectConfigDialog(QDialog):
 
         layout.addWidget(tabs)
 
-        # Close button
-        btn_close = QPushButton("✓  Fechar")
-        btn_close.setStyleSheet("""
+        # Action buttons
+        btn_layout = QHBoxLayout()
+
+        btn_cancel = QPushButton("✕ Cancelar")
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background: #9E9E9E;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 12px 30px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #757575;
+            }
+        """)
+        btn_cancel.clicked.connect(dialog.reject)
+
+        btn_save = QPushButton("✓ Salvar e Aplicar")
+        btn_save.setStyleSheet("""
             QPushButton {
                 background: #4CAF50;
                 color: white;
@@ -505,8 +645,22 @@ class ProjectConfigDialog(QDialog):
                 background: #45A049;
             }
         """)
-        btn_close.clicked.connect(dialog.accept)
-        layout.addWidget(btn_close)
+
+        def on_save():
+            """Save changes and apply as custom preset"""
+            final_cats = save_edits()
+            if final_cats:
+                self.custom_categories = final_cats
+                self.category_preset = 'custom'
+                self.update_auto_info()
+                dialog.accept()
+
+        btn_save.clicked.connect(on_save)
+
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_cancel)
+        btn_layout.addWidget(btn_save)
+        layout.addLayout(btn_layout)
 
         dialog.setLayout(layout)
         dialog.exec_()
