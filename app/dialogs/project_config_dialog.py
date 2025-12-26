@@ -210,6 +210,48 @@ class ProjectConfigDialog(QDialog):
         btn_preview.clicked.connect(self.show_preview)
         content_layout.addWidget(btn_preview)
 
+        # === IMPORT/EXPORT BUTTONS ===
+        import_layout = QHBoxLayout()
+        import_layout.setSpacing(10)
+
+        btn_import_categories = QPushButton("📥 Importar Categorias (CSV)")
+        btn_import_categories.setStyleSheet("""
+            QPushButton {
+                background: #FF9800;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #F57C00;
+            }
+        """)
+        btn_import_categories.clicked.connect(self.import_categories)
+        import_layout.addWidget(btn_import_categories)
+
+        btn_download_template = QPushButton("📄 Baixar Templates")
+        btn_download_template.setStyleSheet("""
+            QPushButton {
+                background: #9C27B0;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #7B1FA2;
+            }
+        """)
+        btn_download_template.clicked.connect(self.download_templates)
+        import_layout.addWidget(btn_download_template)
+
+        content_layout.addLayout(import_layout)
+
         # === INFO NOTE ===
         info_note = QLabel(
             "💡 <b>Dica:</b> As categorias e DRE serão configurados automaticamente. "
@@ -311,6 +353,18 @@ class ProjectConfigDialog(QDialog):
 
     def update_auto_info(self):
         """Update auto-configuration info"""
+        # Handle custom categories from CSV import
+        if self.category_preset == 'custom' and hasattr(self, 'custom_categories'):
+            num_cats = len(self.custom_categories)
+            text = (
+                f"<b>✓ Configuração Customizada (CSV):</b><br><br>"
+                f"<b>Tipo:</b> {'🏢 Pessoa Jurídica' if self.person_type == 'juridica' else '👤 Pessoa Física'}<br>"
+                f"<b>Plano:</b> Importado de CSV<br>"
+                f"<b>Categorias:</b> {num_cats} categorias customizadas"
+            )
+            self.auto_info.setText(text)
+            return
+
         if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
             return
 
@@ -457,11 +511,115 @@ class ProjectConfigDialog(QDialog):
         dialog.setLayout(layout)
         dialog.exec_()
 
+    def import_categories(self):
+        """Import custom categories from CSV"""
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        from utils.csv_templates import CSVTemplates
+
+        filepath, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar Categorias",
+            CSVTemplates.get_templates_dir(),
+            "CSV Files (*.csv);;All Files (*.*)"
+        )
+
+        if not filepath:
+            return
+
+        try:
+            # Parse CSV
+            custom_categories = CSVTemplates.parse_categories_csv(filepath)
+
+            # Show confirmation
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Categorias Importadas")
+            msg.setText(f"✓ {len(custom_categories)} categorias importadas com sucesso!")
+            msg.setInformativeText(
+                f"As categorias customizadas serão aplicadas ao projeto.\n\n"
+                f"Primeiras categorias:\n" +
+                '\n'.join(list(custom_categories.keys())[:5]) +
+                (f"\n... e mais {len(custom_categories) - 5}" if len(custom_categories) > 5 else "")
+            )
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+
+            # Store custom categories (will be applied when project is created)
+            self.custom_categories = custom_categories
+            self.category_preset = 'custom'
+
+            # Update info
+            self.update_auto_info()
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erro ao Importar",
+                f"Erro ao importar categorias:\n{str(e)}\n\n"
+                f"Verifique se o arquivo está no formato correto."
+            )
+
+    def download_templates(self):
+        """Generate and save template CSV files"""
+        from PyQt5.QtWidgets import QMessageBox
+        from utils.csv_templates import CSVTemplates
+        import os
+
+        try:
+            # Generate templates
+            cat_path = CSVTemplates.generate_categories_template()
+            dre_path = CSVTemplates.generate_dre_template()
+
+            templates_dir = CSVTemplates.get_templates_dir()
+
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Templates Gerados")
+            msg.setText("✓ Templates CSV criados com sucesso!")
+            msg.setInformativeText(
+                f"Os templates foram salvos em:\n\n"
+                f"📂 {templates_dir}\n\n"
+                f"📄 template_categorias.csv\n"
+                f"📄 template_dre.csv\n\n"
+                f"Edite os arquivos e importe para customizar seu projeto."
+            )
+
+            # Add button to open folder
+            msg.setStandardButtons(QMessageBox.Ok)
+            open_btn = msg.addButton("📂 Abrir Pasta", QMessageBox.ActionRole)
+
+            result = msg.exec_()
+
+            # Open folder if requested
+            if msg.clickedButton() == open_btn:
+                import platform
+                import subprocess
+
+                if platform.system() == 'Windows':
+                    os.startfile(templates_dir)
+                elif platform.system() == 'Darwin':  # macOS
+                    subprocess.Popen(['open', templates_dir])
+                else:  # Linux
+                    subprocess.Popen(['xdg-open', templates_dir])
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erro",
+                f"Erro ao gerar templates:\n{str(e)}"
+            )
+
     def get_config(self):
         """Get configuration"""
-        return {
+        config = {
             'name': self.name_input.text() or 'Projeto Sem Título',
             'person_type': self.person_type,
             'business_sector': self.business_sector if self.person_type == 'juridica' else None,
             'category_preset': self.category_preset
         }
+
+        # Add custom categories if imported
+        if hasattr(self, 'custom_categories'):
+            config['custom_categories'] = self.custom_categories
+
+        return config
