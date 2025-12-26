@@ -844,8 +844,20 @@ class CategoriesTab(QWidget):
             QMessageBox.information(self, "Sucesso", "Categorias restauradas!")
 
     def set_category_preset(self, preset):
-        """Set the category preset to use for recategorization"""
+        """Set the category preset and update categories display"""
+        from utils.constants import CATEGORY_PRESETS
+
         self.category_preset = preset
+
+        # Load categories from the preset
+        if preset and preset in CATEGORY_PRESETS:
+            self.categories = CATEGORY_PRESETS[preset]['categories'].copy()
+
+            # Keep custom categories
+            self.categories.update(self.custom_categories)
+
+            # Refresh the display with new categories
+            self.refresh_categories()
 
     def recategorize_all(self):
         """Recategorize all transactions using the current category preset"""

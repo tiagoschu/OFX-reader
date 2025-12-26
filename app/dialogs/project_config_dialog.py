@@ -178,6 +178,25 @@ class ProjectConfigDialog(QDialog):
         self.auto_config_info.setWordWrap(True)
         layout.addWidget(self.auto_config_info)
 
+        # Preview button
+        btn_preview = QPushButton("👁️ Ver Detalhes (Categorias e DRE)")
+        btn_preview.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        btn_preview.clicked.connect(self.show_preview)
+        layout.addWidget(btn_preview)
+
         # Info box
         info_frame = QFrame()
         info_frame.setStyleSheet("""
@@ -310,6 +329,86 @@ class ProjectConfigDialog(QDialog):
                 )
 
             self.auto_config_info.setText(config_text)
+
+    def show_preview(self):
+        """Show preview of categories and DRE structure"""
+        from PyQt5.QtWidgets import QTabWidget, QTextBrowser
+        from utils.dre_structures import get_dre_structure
+
+        if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
+            return
+
+        preset_info = CATEGORY_PRESETS[self.category_preset]
+
+        # Create preview dialog
+        preview_dialog = QDialog(self)
+        preview_dialog.setWindowTitle(f"Preview: {preset_info['name']}")
+        preview_dialog.setMinimumSize(700, 600)
+
+        layout = QVBoxLayout()
+
+        # Header
+        header = QLabel(f"📋 {preset_info['name']}")
+        header.setFont(QFont("Arial", 12, QFont.Bold))
+        header.setStyleSheet("color: #1976D2; padding: 10px;")
+        layout.addWidget(header)
+
+        # Tabs
+        tabs = QTabWidget()
+
+        # Categories tab
+        categories_browser = QTextBrowser()
+        categories_html = "<h3>Categorias Pré-configuradas</h3>"
+        categories_html += f"<p><b>Total:</b> {len(preset_info['categories'])} categorias</p><hr>"
+
+        for cat_name, cat_data in sorted(preset_info['categories'].items())[:30]:  # Show first 30
+            icon = cat_data.get('icon', '📁')
+            cat_type = cat_data.get('type', 'other')
+            keywords_count = len(cat_data.get('keywords', []))
+            categories_html += f"<p><b>{icon} {cat_name}</b><br>"
+            categories_html += f"<small>Tipo: {cat_type} | {keywords_count} palavras-chave</small></p>"
+
+        if len(preset_info['categories']) > 30:
+            categories_html += f"<p><i>... e mais {len(preset_info['categories']) - 30} categorias</i></p>"
+
+        categories_browser.setHtml(categories_html)
+        tabs.addTab(categories_browser, "📂 Categorias")
+
+        # DRE tab
+        dre_browser = QTextBrowser()
+        dre_structure = get_dre_structure(self.category_preset)
+        dre_html = f"<h3>{dre_structure['title']}</h3><hr>"
+
+        for item in dre_structure['items']:
+            if item['is_total']:
+                dre_html += f"<p><b style='color: #1976D2;'>{item['label']}</b></p>"
+            else:
+                dre_html += f"<p>&nbsp;&nbsp;{item['label']}</p>"
+
+        dre_browser.setHtml(dre_html)
+        tabs.addTab(dre_browser, "💼 Estrutura DRE")
+
+        layout.addWidget(tabs)
+
+        # Close button
+        btn_close = QPushButton("Fechar")
+        btn_close.setStyleSheet("""
+            QPushButton {
+                background-color: #757575;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+            }
+            QPushButton:hover {
+                background-color: #616161;
+            }
+        """)
+        btn_close.clicked.connect(preview_dialog.accept)
+        layout.addWidget(btn_close)
+
+        preview_dialog.setLayout(layout)
+        preview_dialog.exec_()
 
     def get_config(self):
         """Get the selected configuration"""
