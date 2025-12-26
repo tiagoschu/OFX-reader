@@ -10,10 +10,14 @@ Release: Janeiro 2025
 import sys
 import os
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# CRITICAL: Import QtWebEngineWidgets BEFORE creating QApplication
+# This ensures the web engine is properly initialized
+from PyQt5 import QtWebEngineWidgets
 
 from app.splash import SplashScreen
 from app.main_window import MainWindow
@@ -23,6 +27,11 @@ from utils.config import config
 
 def main():
     """Main application entry point"""
+    # Set attributes BEFORE creating QApplication
+    # This is critical for QtWebEngine to work properly
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("OFX Consolidador Pro")
