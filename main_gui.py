@@ -21,6 +21,7 @@ from PyQt5 import QtWebEngineWidgets
 
 from app.splash import SplashScreen
 from app.main_window import MainWindow
+from app.dialogs.project_dialog import ProjectDialog
 from utils.constants import SPLASH_DURATION
 from utils.config import config
 
@@ -38,6 +39,21 @@ def main():
     app.setApplicationVersion("3.0.0")
     app.setOrganizationName("Tiago Schubert")
 
+    # Show project dialog
+    show_project_dialog = config.get('show_project_dialog_on_startup', True)
+
+    project = None
+    project_path = None
+
+    if show_project_dialog:
+        dialog = ProjectDialog()
+        if dialog.exec_() == ProjectDialog.Accepted:
+            project = dialog.get_project()
+            project_path = dialog.get_project_path()
+        else:
+            # User closed dialog without selection - exit
+            return
+
     # Show splash screen if enabled
     show_splash = config.get('show_splash', True)
 
@@ -46,8 +62,8 @@ def main():
         splash.show()
         splash.show_message("Inicializando...")
 
-        # Create main window (hidden)
-        main_window = MainWindow()
+        # Create main window (hidden) with project
+        main_window = MainWindow(project=project, project_path=project_path)
 
         def show_main_window():
             """Show main window and close splash"""
@@ -58,8 +74,8 @@ def main():
         QTimer.singleShot(SPLASH_DURATION, show_main_window)
 
     else:
-        # Show main window directly
-        main_window = MainWindow()
+        # Show main window directly with project
+        main_window = MainWindow(project=project, project_path=project_path)
         main_window.show()
 
     # Run application

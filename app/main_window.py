@@ -3,7 +3,7 @@ Main Window for OFX Consolidador Pro
 """
 
 from PyQt5.QtWidgets import (QMainWindow, QTabWidget, QAction, QMessageBox,
-                             QApplication)
+                             QApplication, QFileDialog)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon
 import sys
@@ -20,6 +20,7 @@ from app.tabs.tab_reports import ReportsTab
 from app.tabs.tab_dre import DRETab
 from app.tabs.tab_export import ExportTab
 from app.tabs.tab_config import ConfigTab
+from core.project import Project
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
 
@@ -27,10 +28,17 @@ from utils.config import config
 class MainWindow(QMainWindow):
     """Main application window"""
 
-    def __init__(self):
+    def __init__(self, project=None, project_path=None):
         super().__init__()
         self.df = None  # Current dataframe
+        self.processor = None
+        self.project = project or Project()
+        self.project_path = project_path
         self.init_ui()
+
+        # Load project data if provided
+        if project and project.get_dataframe() is not None:
+            self.load_from_project()
 
     def init_ui(self):
         # Window properties
@@ -90,6 +98,29 @@ class MainWindow(QMainWindow):
         # File menu
         file_menu = menubar.addMenu("Arquivo")
 
+        # Project actions
+        new_project_action = QAction("Novo Projeto", self)
+        new_project_action.setShortcut("Ctrl+N")
+        new_project_action.triggered.connect(self.on_new_project)
+        file_menu.addAction(new_project_action)
+
+        open_project_action = QAction("Abrir Projeto...", self)
+        open_project_action.setShortcut("Ctrl+Shift+O")
+        open_project_action.triggered.connect(self.on_open_project)
+        file_menu.addAction(open_project_action)
+
+        save_project_action = QAction("Salvar Projeto", self)
+        save_project_action.setShortcut("Ctrl+S")
+        save_project_action.triggered.connect(self.on_save_project)
+        file_menu.addAction(save_project_action)
+
+        save_project_as_action = QAction("Salvar Projeto Como...", self)
+        save_project_as_action.setShortcut("Ctrl+Shift+S")
+        save_project_as_action.triggered.connect(self.on_save_project_as)
+        file_menu.addAction(save_project_as_action)
+
+        file_menu.addSeparator()
+
         import_action = QAction("Importar OFX...", self)
         import_action.setShortcut("Ctrl+O")
         import_action.triggered.connect(lambda: self.tabs.setCurrentWidget(self.tab_import))
@@ -147,6 +178,118 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
 
         self.statusBar().showMessage(f"Processados {len(df)} transações", 5000)
+
+    def load_from_project(self):
+        """Load data from current project"""
+        df = self.project.get_dataframe()
+        duplicates = self.project.get_duplicates()
+
+        if df is not None and not df.empty:
+            # Simulate processor for compatibility
+            class DummyProcessor:
+                def __init__(self, duplicates):
+                    self.duplicates = duplicates
+
+            self.processor = DummyProcessor(duplicates)
+            self.on_data_processed(df, self.processor)
+
+            # Update title with project name
+            project_name = self.project.get_metadata().get('name', 'Projeto')
+            self.setWindowTitle(f"{APP_NAME} v{VERSION} - {project_name}")
+
+    def on_new_project(self):
+        """Create a new project"""
+        reply = QMessageBox.question(
+            self,
+            "Novo Projeto",
+            "Criar um novo projeto? Os dados atuais não salvos serão perdidos.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self.project = Project()
+            self.project_path = None
+            self.df = None
+            self.processor = None
+
+            # Clear all tabs
+            self.tab_home.update_stats(None)
+            self.setWindowTitle(f"{APP_NAME} v{VERSION}")
+            self.statusBar().showMessage("Novo projeto criado", 3000)
+
+    def on_open_project(self):
+        """Open a project file"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Abrir Projeto",
+            Project.get_default_projects_dir(),
+            "Projetos OFX (*.ofxproj);;Todos os arquivos (*.*)"
+        )
+
+        if file_path:
+            project = Project()
+            success, message, data = project.load(file_path)
+
+            if success:
+                self.project = project
+                self.project_path = file_path
+                self.load_from_project()
+                self.statusBar().showMessage(f"Projeto aberto: {file_path}", 5000)
+            else:
+                QMessageBox.critical(self, "Erro ao Abrir Projeto", message)
+
+    def on_save_project(self):
+        """Save the current project"""
+        if self.project_path:
+            self._save_project_to_file(self.project_path)
+        else:
+            self.on_save_project_as()
+
+    def on_save_project_as(self):
+        """Save project with a new name"""
+        default_dir = Project.get_default_projects_dir()
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar Projeto Como",
+            default_dir,
+            "Projetos OFX (*.ofxproj);;Todos os arquivos (*.*)"
+        )
+
+        if file_path:
+            # Ensure .ofxproj extension
+            if not file_path.endswith('.ofxproj'):
+                file_path += '.ofxproj'
+
+            self._save_project_to_file(file_path)
+
+    def _save_project_to_file(self, file_path):
+        """Internal method to save project to file"""
+        # Get project name from filename
+        import os
+        project_name = os.path.splitext(os.path.basename(file_path))[0]
+
+        # Update metadata
+        metadata = {
+            'name': project_name
+        }
+
+        # Save project
+        success, message = self.project.save(
+            file_path,
+            df=self.df,
+            duplicates=self.processor.duplicates if self.processor else [],
+            metadata=metadata
+        )
+
+        if success:
+            self.project_path = file_path
+            self.setWindowTitle(f"{APP_NAME} v{VERSION} - {project_name}")
+            self.statusBar().showMessage(f"Projeto salvo: {file_path}", 5000)
+            QMessageBox.information(self, "Projeto Salvo", message)
+        else:
+            QMessageBox.critical(self, "Erro ao Salvar", message)
 
     def show_about(self):
         """Show about dialog"""
