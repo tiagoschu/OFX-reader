@@ -1,10 +1,13 @@
 """
-Project Configuration Dialog - Set up project type and categories
+Project Configuration Dialog - REWRITTEN FROM SCRATCH
+Clean, well-structured layout for project setup
 """
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QRadioButton, QComboBox, QGroupBox,
-                             QTextEdit, QLineEdit, QButtonGroup, QFrame)
+                             QLineEdit, QButtonGroup, QFrame, QScrollArea, QWidget,
+                             QTabWidget, QTextBrowser, QTableWidget, QTableWidgetItem,
+                             QHeaderView, QSizePolicy)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
@@ -12,269 +15,272 @@ from utils.constants import CATEGORY_PRESETS, BUSINESS_SECTORS
 
 
 class ProjectConfigDialog(QDialog):
-    """Dialog to configure project settings when creating new project"""
+    """Clean, well-structured dialog for project configuration"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.person_type = 'fisica'
         self.business_sector = 'general'
-        self.category_preset = 'personal'  # Automatically determined
-        self.project_name = ''
-        self.project_description = ''
+        self.category_preset = 'personal'
         self.init_ui()
 
     def init_ui(self):
+        """Initialize UI with clean structure"""
         self.setWindowTitle("Configuração do Projeto")
         self.setModal(True)
-        self.setMinimumSize(600, 480)
+        self.resize(650, 600)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        # Main layout with scroll area
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Header
-        header = QLabel("⚙️ Configuração do Novo Projeto")
-        header.setFont(QFont("Arial", 14, QFont.Bold))
-        header.setStyleSheet("color: #1976D2; margin-bottom: 10px;")
-        layout.addWidget(header)
+        # Scroll area for content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { border: none; background: white; }")
 
-        subtitle = QLabel("O plano de contas será configurado automaticamente de acordo com o tipo selecionado")
-        subtitle.setStyleSheet("color: #666; font-size: 10px; margin-bottom: 15px;")
-        layout.addWidget(subtitle)
+        # Content widget
+        content = QWidget()
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(25, 25, 25, 25)
+        content_layout.setSpacing(20)
 
-        # Project Name
-        name_group = QGroupBox("📝 Nome do Projeto")
-        name_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 11px;
-                font-weight: bold;
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 12px;
-            }
-        """)
-        name_layout = QVBoxLayout()
+        # === HEADER ===
+        header_label = QLabel("⚙️ Configuração do Novo Projeto")
+        header_label.setFont(QFont("Arial", 16, QFont.Bold))
+        header_label.setStyleSheet("color: #1976D2;")
+        content_layout.addWidget(header_label)
+
+        subtitle = QLabel("Configure o tipo de projeto. As categorias serão aplicadas automaticamente.")
+        subtitle.setStyleSheet("color: #666; font-size: 11px; margin-bottom: 10px;")
+        subtitle.setWordWrap(True)
+        content_layout.addWidget(subtitle)
+
+        # Separator
+        sep1 = QFrame()
+        sep1.setFrameShape(QFrame.HLine)
+        sep1.setStyleSheet("background: #E0E0E0;")
+        sep1.setFixedHeight(2)
+        content_layout.addWidget(sep1)
+
+        # === PROJECT NAME ===
+        name_label = QLabel("📝 Nome do Projeto")
+        name_label.setFont(QFont("Arial", 11, QFont.Bold))
+        content_layout.addWidget(name_label)
 
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Digite o nome do projeto...")
         self.name_input.setStyleSheet("""
             QLineEdit {
-                padding: 8px;
-                border: 1px solid #CFD8DC;
+                padding: 10px;
+                border: 2px solid #E0E0E0;
                 border-radius: 4px;
-                font-size: 10px;
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border-color: #2196F3;
             }
         """)
-        name_layout.addWidget(self.name_input)
+        content_layout.addWidget(self.name_input)
 
-        name_group.setLayout(name_layout)
-        layout.addWidget(name_group)
+        # === PERSON TYPE ===
+        person_label = QLabel("👤 Tipo de Pessoa")
+        person_label.setFont(QFont("Arial", 11, QFont.Bold))
+        content_layout.addWidget(person_label)
 
-        # Person Type
-        person_group = QGroupBox("👤 Tipo de Pessoa")
-        person_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 11px;
-                font-weight: bold;
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 12px;
-            }
-        """)
-        person_layout = QHBoxLayout()
-        person_layout.setSpacing(20)
+        person_buttons = QHBoxLayout()
+        person_buttons.setSpacing(15)
 
         self.person_group = QButtonGroup()
 
         self.rb_fisica = QRadioButton("👤 Pessoa Física")
         self.rb_fisica.setChecked(True)
-        self.rb_fisica.setStyleSheet("font-size: 10px;")
+        self.rb_fisica.setStyleSheet("font-size: 12px; padding: 5px;")
         self.rb_fisica.toggled.connect(self.on_person_type_changed)
         self.person_group.addButton(self.rb_fisica, 0)
-        person_layout.addWidget(self.rb_fisica)
+        person_buttons.addWidget(self.rb_fisica)
 
         self.rb_juridica = QRadioButton("🏢 Pessoa Jurídica")
-        self.rb_juridica.setStyleSheet("font-size: 10px;")
+        self.rb_juridica.setStyleSheet("font-size: 12px; padding: 5px;")
         self.rb_juridica.toggled.connect(self.on_person_type_changed)
         self.person_group.addButton(self.rb_juridica, 1)
-        person_layout.addWidget(self.rb_juridica)
+        person_buttons.addWidget(self.rb_juridica)
 
-        person_layout.addStretch()
-        person_group.setLayout(person_layout)
-        layout.addWidget(person_group)
+        person_buttons.addStretch()
+        content_layout.addLayout(person_buttons)
 
-        # Business Sector (only for Juridica)
-        self.sector_group = QGroupBox("🏢 Ramo de Negócio")
-        self.sector_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 11px;
-                font-weight: bold;
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 12px;
-            }
-        """)
-        sector_layout = QVBoxLayout()
-        sector_layout.setSpacing(8)
+        # === BUSINESS SECTOR (hidden by default) ===
+        self.sector_container = QWidget()
+        sector_container_layout = QVBoxLayout()
+        sector_container_layout.setContentsMargins(0, 0, 0, 0)
+        sector_container_layout.setSpacing(10)
+
+        sector_label = QLabel("🏢 Ramo de Negócio")
+        sector_label.setFont(QFont("Arial", 11, QFont.Bold))
+        sector_container_layout.addWidget(sector_label)
 
         self.cb_business_sector = QComboBox()
+        self.cb_business_sector.setMaxVisibleItems(6)  # Limit dropdown height
+
         for sector_key, sector_info in BUSINESS_SECTORS.items():
-            icon = "✈️" if sector_key == "travel_agency" else "🏢"
-            self.cb_business_sector.addItem(f"{icon} {sector_info['name']}", sector_key)
+            icon = sector_info.get('icon', '🏢')
+            self.cb_business_sector.addItem(f"{icon}  {sector_info['name']}", sector_key)
 
         self.cb_business_sector.setStyleSheet("""
             QComboBox {
-                font-size: 12px;
-                font-weight: bold;
                 padding: 12px;
-                border: 2px solid #CFD8DC;
+                border: 2px solid #E0E0E0;
                 border-radius: 4px;
-                min-height: 40px;
+                font-size: 13px;
+                font-weight: bold;
+                min-height: 20px;
+            }
+            QComboBox:focus {
+                border-color: #2196F3;
             }
             QComboBox::drop-down {
                 border: none;
-                width: 35px;
-            }
-            QComboBox::down-arrow {
-                width: 12px;
-                height: 12px;
+                width: 30px;
             }
             QComboBox QAbstractItemView {
-                font-size: 12px;
-                font-weight: bold;
-                padding: 8px;
+                border: 2px solid #2196F3;
                 selection-background-color: #E3F2FD;
                 selection-color: #000;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 5px;
             }
             QComboBox QAbstractItemView::item {
-                min-height: 40px;
-                padding: 10px;
+                min-height: 35px;
+                padding: 8px;
             }
         """)
         self.cb_business_sector.currentIndexChanged.connect(self.on_business_sector_changed)
-        sector_layout.addWidget(self.cb_business_sector)
+        sector_container_layout.addWidget(self.cb_business_sector)
 
         # Sector description
         self.sector_desc = QLabel()
         self.sector_desc.setStyleSheet("""
-            font-size: 9px;
-            color: #546E7A;
-            padding: 6px;
-            background-color: #ECEFF1;
+            background: #F5F5F5;
+            padding: 10px;
+            border-left: 3px solid #2196F3;
+            color: #424242;
+            font-size: 11px;
             border-radius: 3px;
         """)
         self.sector_desc.setWordWrap(True)
-        sector_layout.addWidget(self.sector_desc)
+        sector_container_layout.addWidget(self.sector_desc)
 
-        self.sector_group.setLayout(sector_layout)
-        layout.addWidget(self.sector_group)
+        self.sector_container.setLayout(sector_container_layout)
+        self.sector_container.setVisible(False)  # Hidden by default
+        content_layout.addWidget(self.sector_container)
 
-        # Auto-configuration info display (replaces manual category preset selection)
-        self.auto_config_info = QLabel()
-        self.auto_config_info.setStyleSheet("""
-            font-size: 10px;
-            color: #1976D2;
-            padding: 12px;
-            background-color: #E3F2FD;
+        # === AUTO CONFIG INFO ===
+        self.auto_info = QLabel()
+        self.auto_info.setStyleSheet("""
+            background: #E3F2FD;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            color: #1565C0;
+            font-size: 12px;
+            font-weight: bold;
             border-radius: 4px;
-            border-left: 4px solid #1976D2;
         """)
-        self.auto_config_info.setWordWrap(True)
-        layout.addWidget(self.auto_config_info)
+        self.auto_info.setWordWrap(True)
+        content_layout.addWidget(self.auto_info)
 
-        # Preview button
-        btn_preview = QPushButton("👁️ Ver Detalhes (Categorias e DRE)")
+        # === PREVIEW BUTTON ===
+        btn_preview = QPushButton("👁️  Ver Categorias e Estrutura DRE")
         btn_preview.setStyleSheet("""
             QPushButton {
-                background-color: #2196F3;
+                background: #2196F3;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px;
-                font-size: 10px;
+                padding: 12px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background: #1976D2;
             }
         """)
         btn_preview.clicked.connect(self.show_preview)
-        layout.addWidget(btn_preview)
+        content_layout.addWidget(btn_preview)
 
-        # Info box
-        info_frame = QFrame()
-        info_frame.setStyleSheet("""
-            QFrame {
-                background-color: #FFF9C4;
-                border: 1px solid #FBC02D;
-                border-radius: 4px;
-                padding: 10px;
-            }
-        """)
-        info_layout = QVBoxLayout()
-
-        info_label = QLabel(
-            "⚡ <b>Importante:</b> O plano de categorias e estrutura do DRE serão configurados "
-            "automaticamente de acordo com o tipo de pessoa e ramo de negócio selecionados. "
-            "Você pode recategorizar os dados a qualquer momento na aba Categorias."
+        # === INFO NOTE ===
+        info_note = QLabel(
+            "💡 <b>Dica:</b> As categorias e DRE serão configurados automaticamente. "
+            "Você pode recategorizar depois na aba Categorias."
         )
-        info_label.setStyleSheet("font-size: 11px; color: #F57F17; background: transparent; font-weight: bold;")
-        info_label.setWordWrap(True)
-        info_layout.addWidget(info_label)
+        info_note.setStyleSheet("""
+            background: #FFF9C4;
+            padding: 12px;
+            border-left: 4px solid #FBC02D;
+            color: #F57F17;
+            font-size: 11px;
+            border-radius: 4px;
+        """)
+        info_note.setWordWrap(True)
+        content_layout.addWidget(info_note)
 
-        info_frame.setLayout(info_layout)
-        layout.addWidget(info_frame)
+        content_layout.addStretch()
+        content.setLayout(content_layout)
+        scroll.setWidget(content)
+        main_layout.addWidget(scroll)
 
-        # Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
+        # === BOTTOM BUTTONS ===
+        button_bar = QFrame()
+        button_bar.setStyleSheet("background: #F5F5F5; border-top: 1px solid #E0E0E0;")
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(20, 15, 20, 15)
+        button_layout.addStretch()
 
         btn_cancel = QPushButton("Cancelar")
         btn_cancel.setStyleSheet("""
             QPushButton {
-                background-color: #757575;
+                background: #757575;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 25px;
-                font-size: 10px;
+                padding: 10px 30px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #616161;
+                background: #616161;
             }
         """)
         btn_cancel.clicked.connect(self.reject)
-        btn_layout.addWidget(btn_cancel)
+        button_layout.addWidget(btn_cancel)
 
-        btn_create = QPushButton("Criar Projeto")
+        btn_create = QPushButton("✓  Criar Projeto")
         btn_create.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background: #4CAF50;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 25px;
-                font-size: 10px;
+                padding: 10px 30px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #45A049;
+                background: #45A049;
             }
         """)
         btn_create.clicked.connect(self.accept)
-        btn_layout.addWidget(btn_create)
+        button_layout.addWidget(btn_create)
 
-        layout.addLayout(btn_layout)
+        button_bar.setLayout(button_layout)
+        main_layout.addWidget(button_bar)
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
         # Initialize
-        self.on_person_type_changed()
-        self.update_auto_config_display()
+        self.update_auto_info()
 
     def on_person_type_changed(self):
         """Handle person type change"""
@@ -282,64 +288,56 @@ class ProjectConfigDialog(QDialog):
         self.person_type = 'juridica' if is_juridica else 'fisica'
 
         # Show/hide business sector
-        self.sector_group.setVisible(is_juridica)
+        self.sector_container.setVisible(is_juridica)
 
-        # Automatically determine category preset
+        # Set preset
         if is_juridica:
-            # For juridica, preset depends on business sector
             self.on_business_sector_changed()
         else:
-            # For fisica, always use personal preset
             self.category_preset = 'personal'
-            self.update_auto_config_display()
+            self.update_auto_info()
 
     def on_business_sector_changed(self):
-        """Handle business sector change and automatically set category preset"""
+        """Handle business sector change"""
         sector_key = self.cb_business_sector.currentData()
         if sector_key and sector_key in BUSINESS_SECTORS:
             sector_info = BUSINESS_SECTORS[sector_key]
             self.business_sector = sector_key
             self.sector_desc.setText(f"📌 {sector_info['description']}")
 
-            # Automatically determine category preset based on business sector
+            # Auto-determine preset
             self.category_preset = sector_info.get('preset', 'business')
+            self.update_auto_info()
 
-            # Update the auto-config display
-            self.update_auto_config_display()
+    def update_auto_info(self):
+        """Update auto-configuration info"""
+        if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
+            return
 
-    def update_auto_config_display(self):
-        """Update the auto-configuration info display"""
-        if self.category_preset and self.category_preset in CATEGORY_PRESETS:
-            preset_info = CATEGORY_PRESETS[self.category_preset]
-            num_categories = len(preset_info['categories'])
+        preset_info = CATEGORY_PRESETS[self.category_preset]
+        num_cats = len(preset_info['categories'])
 
-            person_type_label = "👤 Pessoa Física" if self.person_type == 'fisica' else "🏢 Pessoa Jurídica"
+        if self.person_type == 'juridica':
+            sector_info = BUSINESS_SECTORS.get(self.business_sector, {})
+            text = (
+                f"<b>✓ Configuração Automática:</b><br><br>"
+                f"<b>Tipo:</b> 🏢 Pessoa Jurídica<br>"
+                f"<b>Ramo:</b> {sector_info.get('name', 'Geral')}<br>"
+                f"<b>Plano:</b> {preset_info['name']}<br>"
+                f"<b>Categorias:</b> {num_cats} pré-configuradas"
+            )
+        else:
+            text = (
+                f"<b>✓ Configuração Automática:</b><br><br>"
+                f"<b>Tipo:</b> 👤 Pessoa Física<br>"
+                f"<b>Plano:</b> {preset_info['name']}<br>"
+                f"<b>Categorias:</b> {num_cats} pré-configuradas"
+            )
 
-            if self.person_type == 'juridica':
-                sector_info = BUSINESS_SECTORS.get(self.business_sector, {})
-                sector_label = sector_info.get('name', 'Geral')
-                config_text = (
-                    f"<b>✓ Configuração Automática:</b><br>"
-                    f"• Tipo: {person_type_label}<br>"
-                    f"• Ramo: {sector_label}<br>"
-                    f"• Plano: {preset_info['name']}<br>"
-                    f"• {num_categories} categorias pré-configuradas<br>"
-                    f"• DRE adaptado para este tipo de negócio"
-                )
-            else:
-                config_text = (
-                    f"<b>✓ Configuração Automática:</b><br>"
-                    f"• Tipo: {person_type_label}<br>"
-                    f"• Plano: {preset_info['name']}<br>"
-                    f"• {num_categories} categorias pré-configuradas<br>"
-                    f"• DRE para controle pessoal"
-                )
-
-            self.auto_config_info.setText(config_text)
+        self.auto_info.setText(text)
 
     def show_preview(self):
-        """Show preview of categories and DRE structure with full list"""
-        from PyQt5.QtWidgets import QTabWidget, QTextBrowser, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView
+        """Show preview dialog with categories and DRE"""
         from utils.dre_structures import get_dre_structure
 
         if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
@@ -347,38 +345,34 @@ class ProjectConfigDialog(QDialog):
 
         preset_info = CATEGORY_PRESETS[self.category_preset]
 
-        # Create preview dialog
-        preview_dialog = QDialog(self)
-        preview_dialog.setWindowTitle(f"Preview: {preset_info['name']}")
-        preview_dialog.setMinimumSize(900, 700)
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Preview: {preset_info['name']}")
+        dialog.resize(950, 700)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # Header
         header = QLabel(f"📋 {preset_info['name']}")
-        header.setFont(QFont("Arial", 14, QFont.Bold))
+        header.setFont(QFont("Arial", 16, QFont.Bold))
         header.setStyleSheet("color: #1976D2; padding: 10px; background: #E3F2FD; border-radius: 4px;")
         layout.addWidget(header)
 
-        subtitle = QLabel(f"Total: {len(preset_info['categories'])} categorias pré-configuradas")
-        subtitle.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
+        subtitle = QLabel(f"Total: {len(preset_info['categories'])} categorias")
+        subtitle.setStyleSheet("color: #666; font-size: 12px; padding: 5px;")
         layout.addWidget(subtitle)
 
         # Tabs
         tabs = QTabWidget()
         tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #CFD8DC;
-                border-radius: 4px;
-            }
             QTabBar::tab {
                 background: #F5F5F5;
-                padding: 10px 20px;
-                margin-right: 2px;
+                padding: 12px 25px;
+                margin-right: 3px;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QTabBar::tab:selected {
@@ -387,114 +381,84 @@ class ProjectConfigDialog(QDialog):
             }
         """)
 
-        # Categories table - Show ALL categories
-        categories_table = QTableWidget()
-        categories_table.setColumnCount(4)
-        categories_table.setHorizontalHeaderLabels(['Categoria', 'Tipo', 'Keywords', 'Ícone'])
-        categories_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        categories_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        categories_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        categories_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        categories_table.setAlternatingRowColors(True)
-        categories_table.setStyleSheet("""
+        # Categories table
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(['Categoria', 'Tipo', 'Keywords', 'Ícone'])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        table.setAlternatingRowColors(True)
+        table.setStyleSheet("""
             QTableWidget {
                 font-size: 11px;
                 gridline-color: #E0E0E0;
             }
-            QTableWidget::item {
-                padding: 8px;
-            }
             QHeaderView::section {
-                background-color: #2196F3;
+                background: #2196F3;
                 color: white;
                 padding: 10px;
                 font-weight: bold;
-                font-size: 11px;
             }
         """)
 
-        # Populate ALL categories
-        categories_table.setRowCount(len(preset_info['categories']))
+        # Populate categories
+        table.setRowCount(len(preset_info['categories']))
         for row, (cat_name, cat_data) in enumerate(sorted(preset_info['categories'].items())):
-            # Category name
-            name_item = QTableWidgetItem(cat_name)
-            categories_table.setItem(row, 0, name_item)
+            table.setItem(row, 0, QTableWidgetItem(cat_name))
+            table.setItem(row, 1, QTableWidgetItem(cat_data.get('type', 'other')))
 
-            # Type
-            cat_type = cat_data.get('type', 'other')
-            type_item = QTableWidgetItem(cat_type)
-            categories_table.setItem(row, 1, type_item)
-
-            # Keywords
             keywords = cat_data.get('keywords', [])
-            keywords_text = ', '.join(keywords[:5])  # Show first 5
+            kw_text = ', '.join(keywords[:5])
             if len(keywords) > 5:
-                keywords_text += f' ... (+{len(keywords)-5})'
-            keywords_item = QTableWidgetItem(keywords_text)
-            categories_table.setItem(row, 2, keywords_item)
+                kw_text += f' ... (+{len(keywords)-5})'
+            table.setItem(row, 2, QTableWidgetItem(kw_text))
+            table.setItem(row, 3, QTableWidgetItem(cat_data.get('icon', '📁')))
 
-            # Icon
-            icon_item = QTableWidgetItem(cat_data.get('icon', '📁'))
-            categories_table.setItem(row, 3, icon_item)
+        tabs.addTab(table, "📂 Categorias")
 
-        tabs.addTab(categories_table, "📂 Categorias (TODAS)")
-
-        # DRE tab with better formatting
+        # DRE structure
         dre_browser = QTextBrowser()
         dre_browser.setStyleSheet("font-size: 12px; padding: 10px;")
-        dre_structure = get_dre_structure(self.category_preset)
-        dre_html = f"<h2 style='color: #1976D2;'>{dre_structure['title']}</h2><hr>"
-        dre_html += "<div style='font-family: monospace; line-height: 1.8;'>"
-
-        for item in dre_structure['items']:
+        dre_struct = get_dre_structure(self.category_preset)
+        html = f"<h2 style='color: #1976D2;'>{dre_struct['title']}</h2><hr>"
+        html += "<div style='font-family: monospace; line-height: 2.0;'>"
+        for item in dre_struct['items']:
             if item['is_total']:
-                dre_html += f"<p style='font-weight: bold; color: #1976D2; font-size: 13px;'>{item['label']}</p>"
+                html += f"<p style='font-weight: bold; color: #1976D2; font-size: 13px;'>{item['label']}</p>"
             else:
-                dre_html += f"<p style='padding-left: 20px; color: #424242;'>{item['label']}</p>"
-
-        dre_html += "</div>"
-        dre_browser.setHtml(dre_html)
-        tabs.addTab(dre_browser, "💼 Estrutura DRE")
+                html += f"<p style='padding-left: 30px; color: #424242;'>{item['label']}</p>"
+        html += "</div>"
+        dre_browser.setHtml(html)
+        tabs.addTab(dre_browser, "💼 DRE")
 
         layout.addWidget(tabs)
 
-        # Info note
-        note = QLabel("ℹ️ Estas categorias serão aplicadas automaticamente. Você poderá recategorizar depois na aba Categorias.")
-        note.setStyleSheet("""
-            background: #E3F2FD;
-            padding: 10px;
-            border-left: 4px solid #2196F3;
-            color: #1976D2;
-            font-size: 10px;
-            border-radius: 4px;
-        """)
-        note.setWordWrap(True)
-        layout.addWidget(note)
-
         # Close button
-        btn_close = QPushButton("✓ Entendi - Fechar")
+        btn_close = QPushButton("✓  Fechar")
         btn_close.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background: #4CAF50;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 12px 25px;
-                font-size: 11px;
+                padding: 12px 30px;
+                font-size: 12px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #45A049;
+                background: #45A049;
             }
         """)
-        btn_close.clicked.connect(preview_dialog.accept)
+        btn_close.clicked.connect(dialog.accept)
         layout.addWidget(btn_close)
 
-        preview_dialog.setLayout(layout)
-        preview_dialog.exec_()
+        dialog.setLayout(layout)
+        dialog.exec_()
 
     def get_config(self):
-        """Get the selected configuration"""
+        """Get configuration"""
         return {
             'name': self.name_input.text() or 'Projeto Sem Título',
             'person_type': self.person_type,
