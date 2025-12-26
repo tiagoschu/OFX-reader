@@ -377,343 +377,201 @@ CATEGORIES_CHART_OF_ACCOUNTS = {
 # Default category set (for backward compatibility)
 CATEGORIES = CATEGORIES_PERSONAL
 
-# Travel Agency Chart of Accounts (Plano de Contas para Agência de Viagens)
+# Travel Agency Chart of Accounts (Plano de Contas para Agência de Viagens - WIZTOUR)
+# Estrutura focada em evitar tributação indevida com ênfase no Passivo
 CATEGORIES_TRAVEL_AGENCY = {
-    # 1 - ATIVO
-    '1-01-01-001 Caixa Geral': {
-        'keywords': ['caixa', 'dinheiro', 'especie'],
+
+    # ========== 1 - ATIVO ==========
+    '1 | Ativo': {
+        'keywords': ['ativo'],
         'color': '#4CAF50',
+        'icon': '📊',
+        'type': 'asset',
+        'code': '1'
+    },
+    '1.1 | Ativo Circulante': {
+        'keywords': ['ativo circulante'],
+        'color': '#66BB6A',
+        'icon': '💹',
+        'type': 'asset',
+        'code': '1.1'
+    },
+    '1.1.1 | Caixa': {
+        'keywords': ['caixa', 'dinheiro', 'especie', 'moeda'],
+        'color': '#81C784',
         'icon': '💵',
         'type': 'asset',
-        'code': '1-01-01-001-0000001'
+        'code': '1.1.1'
     },
-    '1-01-01-001 Cheques Pré Datados': {
-        'keywords': ['cheque', 'pre datado', 'pré-datado'],
-        'color': '#66BB6A',
-        'icon': '📝',
-        'type': 'asset',
-        'code': '1-01-01-001-0000002'
-    },
-    '1-01-01-002 BRADESCO': {
-        'keywords': ['bradesco', 'banco bradesco'],
-        'color': '#81C784',
-        'icon': '🏦',
-        'type': 'asset',
-        'code': '1-01-01-002-0000002'
-    },
-    '1-01-01-002 Banco do Brasil': {
-        'keywords': ['banco do brasil', 'bb', 'conta corrente bb'],
+    '1.1.2 | Bancos Conta Movimento': {
+        'keywords': ['banco', 'conta corrente', 'conta movimento', 'bradesco', 'itau', 'santander', 'bb', 'caixa economica'],
         'color': '#A5D6A7',
         'icon': '🏦',
         'type': 'asset',
-        'code': '1-01-01-002-0000003'
+        'code': '1.1.2'
     },
-    '1-01-01-003 Aplicações Financeiras': {
-        'keywords': ['aplicacao', 'aplicação', 'renda fixa', 'investimento'],
+    '1.1.3 | Contas a Receber': {
+        'keywords': ['contas a receber', 'receber', 'cliente', 'duplicata', 'credito a receber'],
         'color': '#C8E6C9',
-        'icon': '📈',
+        'icon': '📥',
         'type': 'asset',
-        'code': '1-01-01-003-0000001'
-    },
-    '1-02-001 Clientes': {
-        'keywords': ['cliente', 'contas a receber', 'receber'],
-        'color': '#FFB74D',
-        'icon': '👥',
-        'type': 'asset',
-        'code': '1-02-001'
-    },
-    '1-02-002 Cartões de Débito/Crédito': {
-        'keywords': ['cartao', 'cartão', 'credito', 'crédito', 'debito', 'débito'],
-        'color': '#FFA726',
-        'icon': '💳',
-        'type': 'asset',
-        'code': '1-02-002'
-    },
-    '1-02-100 Lei Kandir - Tarifas': {
-        'keywords': ['lei kandir', 'kandir tarifa'],
-        'color': '#FF9800',
-        'icon': '⚖️',
-        'type': 'asset',
-        'code': '1-02-100-0000001'
-    },
-    '1-03-001 Computadores e Equipamentos': {
-        'keywords': ['computador', 'impressora', 'equipamento', 'hardware'],
-        'color': '#64B5F6',
-        'icon': '💻',
-        'type': 'asset',
-        'code': '1-03-001-0000001'
-    },
-    '1-03-002 Veículos': {
-        'keywords': ['veiculo', 'veículo', 'carro', 'van', 'onibus', 'ônibus'],
-        'color': '#42A5F5',
-        'icon': '🚗',
-        'type': 'asset',
-        'code': '1-03-002'
+        'code': '1.1.3'
     },
 
-    # 2 - PASSIVO E PATRIMÔNIO LÍQUIDO
-    '2-01-001 Fornecedores': {
-        'keywords': ['fornecedor', 'contas a pagar', 'pagar'],
+    # ========== 2 - PASSIVO (MAIS IMPORTANTE - evita tributação indevida) ==========
+    '2 | Passivo': {
+        'keywords': ['passivo'],
         'color': '#FF5252',
+        'icon': '📊',
+        'type': 'liability',
+        'code': '2'
+    },
+    '2.1 | Passivo Circulante': {
+        'keywords': ['passivo circulante'],
+        'color': '#FF6E40',
+        'icon': '📉',
+        'type': 'liability',
+        'code': '2.1'
+    },
+    '2.1.1 | Fornecedores': {
+        'keywords': ['fornecedor', 'contas a pagar', 'pagar', 'companhia aerea', 'hotel', 'operadora'],
+        'color': '#FF7043',
         'icon': '📤',
         'type': 'liability',
-        'code': '2-01-001'
+        'code': '2.1.1'
     },
-    '2-01-002 Emissores e Promotores': {
-        'keywords': ['emissor', 'promotor', 'companhia aerea', 'companhia aérea'],
-        'color': '#FF6E40',
+    '2.1.2 | Receitas Diferidas – Viagens a Realizar': {
+        'keywords': ['receita diferida', 'viagem a realizar', 'antecipacao', 'adiantamento cliente', 'pacote a realizar'],
+        'color': '#FF8A65',
         'icon': '✈️',
         'type': 'liability',
-        'code': '2-01-002'
+        'code': '2.1.2'
     },
-    '2-01-003 Emissores de Agências Clientes': {
-        'keywords': ['emissor cliente', 'agencia cliente', 'agência'],
-        'color': '#FF7043',
-        'icon': '🏢',
-        'type': 'liability',
-        'code': '2-01-003'
-    },
-    '2-01-100 Tarifas - Recursos Temporários': {
-        'keywords': ['tarifa temporaria', 'temporário tarifa'],
-        'color': '#FF8A65',
-        'icon': '⏱️',
-        'type': 'liability',
-        'code': '2-01-100-0000001'
-    },
-    '2-01-100 Taxas - Recursos Temporários': {
-        'keywords': ['taxa temporaria', 'temporário taxa'],
+    '2.1.3 | Valores de Terceiros a Repassar': {
+        'keywords': ['valores terceiros', 'repassar', 'repasse', 'taxa terceiro', 'valor intermediado'],
         'color': '#FFAB91',
-        'icon': '⏱️',
+        'icon': '🔄',
         'type': 'liability',
-        'code': '2-01-100-0000002'
-    },
-    '2-01-100 Taxa Seguro': {
-        'keywords': ['taxa seguro', 'seguro viagem'],
-        'color': '#FFCCBC',
-        'icon': '🛡️',
-        'type': 'liability',
-        'code': '2-01-100-0000003'
-    },
-    '2-01-100 Taxa No Show': {
-        'keywords': ['no show', 'falta', 'ausencia', 'ausência'],
-        'color': '#D84315',
-        'icon': '❌',
-        'type': 'liability',
-        'code': '2-01-100-0000007'
-    },
-    '2-03-001 Capital Social': {
-        'keywords': ['capital social', 'capital subscrito'],
-        'color': '#9C27B0',
-        'icon': '💰',
-        'type': 'equity',
-        'code': '2-03-001-0000001'
-    },
-    '2-03-007 Prejuízos Acumulados': {
-        'keywords': ['prejuizo', 'prejuízo', 'lucro acumulado'],
-        'color': '#BA68C8',
-        'icon': '📉',
-        'type': 'equity',
-        'code': '2-03-007'
+        'code': '2.1.3'
     },
 
-    # 3 - CUSTOS E DESPESAS
-    '3-01-001 Custos dos Serviços Prestados': {
-        'keywords': ['custo servico', 'custo serviço', 'csp'],
+    # ========== 3 - PATRIMÔNIO LÍQUIDO ==========
+    '3 | Patrimônio Líquido': {
+        'keywords': ['patrimonio liquido', 'patrimônio líquido'],
+        'color': '#9C27B0',
+        'icon': '💎',
+        'type': 'equity',
+        'code': '3'
+    },
+    '3.1 | Capital Social': {
+        'keywords': ['capital social', 'capital subscrito', 'capital integralizado'],
+        'color': '#AB47BC',
+        'icon': '💰',
+        'type': 'equity',
+        'code': '3.1'
+    },
+    '3.2 | Lucros ou Prejuízos Acumulados': {
+        'keywords': ['lucro acumulado', 'prejuizo acumulado', 'prejuízo acumulado', 'resultado acumulado'],
+        'color': '#BA68C8',
+        'icon': '📊',
+        'type': 'equity',
+        'code': '3.2'
+    },
+
+    # ========== 4 - RECEITAS (somente o que é DA WIZTOUR) ==========
+    # ❌ NUNCA lançar valor de fornecedor aqui
+    '4 | Receitas': {
+        'keywords': ['receita'],
+        'color': '#2196F3',
+        'icon': '💵',
+        'type': 'revenue',
+        'code': '4'
+    },
+    '4.1 | Receita Operacional': {
+        'keywords': ['receita operacional'],
+        'color': '#42A5F5',
+        'icon': '💼',
+        'type': 'revenue',
+        'code': '4.1'
+    },
+    '4.1.1 | Comissão de Intercâmbios': {
+        'keywords': ['comissao intercambio', 'comissão intercâmbio', 'intercambio', 'cambio', 'remessa'],
+        'color': '#64B5F6',
+        'icon': '💱',
+        'type': 'revenue',
+        'code': '4.1.1'
+    },
+    '4.1.2 | Margem de Pacotes de Viagem': {
+        'keywords': ['margem pacote', 'markup', 'lucro pacote', 'margem viagem'],
+        'color': '#90CAF9',
+        'icon': '✈️',
+        'type': 'revenue',
+        'code': '4.1.2'
+    },
+    '4.1.3 | Taxas de Serviço': {
+        'keywords': ['taxa servico', 'taxa serviço', 'fee', 'taxa administrativa', 'servico prestado'],
+        'color': '#BBDEFB',
+        'icon': '🔧',
+        'type': 'revenue',
+        'code': '4.1.3'
+    },
+
+    # ========== 5 - DESPESAS OPERACIONAIS ==========
+    '5 | Despesas': {
+        'keywords': ['despesa'],
         'color': '#F44336',
         'icon': '💸',
         'type': 'expense',
-        'code': '3-01-001'
+        'code': '5'
     },
-    '3-02-001 Aluguéis e Condomínios': {
-        'keywords': ['aluguel', 'condominio', 'condomínio'],
+    '5.1 | Despesas Operacionais': {
+        'keywords': ['despesa operacional'],
         'color': '#EF5350',
-        'icon': '🏠',
-        'type': 'expense',
-        'code': '3-02-001'
-    },
-    '3-02-002 Despesas c/ Pessoal': {
-        'keywords': ['salario', 'salário', 'folha', 'funcionario', 'funcionário'],
-        'color': '#E57373',
-        'icon': '👥',
-        'type': 'expense',
-        'code': '3-02-002'
-    },
-    '3-02-003 Comunicação': {
-        'keywords': ['telefone', 'internet', 'fax', 'comunicacao', 'comunicação'],
-        'color': '#EF9A9A',
-        'icon': '📞',
-        'type': 'expense',
-        'code': '3-02-003'
-    },
-    '3-02-004 Impostos e Taxas': {
-        'keywords': ['imposto', 'taxa', 'tributo', 'iptu', 'ir'],
-        'color': '#FFCDD2',
-        'icon': '📋',
-        'type': 'expense',
-        'code': '3-02-004'
-    },
-    '3-02-005 Propaganda e Publicidade': {
-        'keywords': ['propaganda', 'publicidade', 'marketing', 'anuncio', 'anúncio'],
-        'color': '#FF8A80',
-        'icon': '📢',
-        'type': 'expense',
-        'code': '3-02-005'
-    },
-    '3-02-006 Transporte e Locomoção': {
-        'keywords': ['transporte', 'locomocao', 'locomoção', 'combustivel', 'combustível'],
-        'color': '#FF5252',
-        'icon': '🚗',
-        'type': 'expense',
-        'code': '3-02-006'
-    },
-    '3-02-007 Despesas Administrativas': {
-        'keywords': ['administrativa', 'administracao', 'administração'],
-        'color': '#F48FB1',
         'icon': '📊',
         'type': 'expense',
-        'code': '3-02-007'
+        'code': '5.1'
     },
-    '3-02-008 Energia Elétrica': {
-        'keywords': ['energia', 'luz', 'eletrica', 'elétrica'],
-        'color': '#F8BBD0',
-        'icon': '💡',
+    '5.1.1 | Marketing e Publicidade': {
+        'keywords': ['marketing', 'publicidade', 'propaganda', 'anuncio', 'facebook ads', 'google ads', 'instagram'],
+        'color': '#E57373',
+        'icon': '📢',
         'type': 'expense',
-        'code': '3-02-008'
+        'code': '5.1.1'
     },
-    '3-02-009 Serviços de Terceiros': {
-        'keywords': ['servico terceiro', 'serviço terceiro', 'terceirizado'],
-        'color': '#FCE4EC',
-        'icon': '🔧',
+    '5.1.2 | Comissões de Vendas': {
+        'keywords': ['comissao venda', 'comissão venda', 'comissao vendedor', 'comissão vendedor', 'bonus venda'],
+        'color': '#EF9A9A',
+        'icon': '💼',
         'type': 'expense',
-        'code': '3-02-009'
+        'code': '5.1.2'
     },
-    '3-02-010 Juros e Comissões Bancárias': {
-        'keywords': ['juros', 'comissao bancaria', 'comissão bancária', 'tarifa bancaria', 'tarifa bancária'],
+    '5.1.3 | Sistemas e Softwares': {
+        'keywords': ['sistema', 'software', 'saas', 'tecnologia', 'crm', 'erp', 'assinatura'],
+        'color': '#FFCDD2',
+        'icon': '💻',
+        'type': 'expense',
+        'code': '5.1.3'
+    },
+    '5.1.4 | Honorários Contábeis': {
+        'keywords': ['contador', 'contabilidade', 'honorario contabil', 'honorário contábil', 'escritorio contabil'],
+        'color': '#E1BEE7',
+        'icon': '📊',
+        'type': 'expense',
+        'code': '5.1.4'
+    },
+    '5.1.5 | Taxas Bancárias': {
+        'keywords': ['taxa bancaria', 'taxa bancária', 'tarifa banco', 'ted', 'doc', 'boleto'],
         'color': '#CE93D8',
         'icon': '🏦',
         'type': 'expense',
-        'code': '3-02-010'
+        'code': '5.1.5'
     },
-    '3-02-014 Material de Escritório': {
-        'keywords': ['material escritorio', 'material escritório', 'papelaria'],
-        'color': '#B39DDB',
-        'icon': '✏️',
+    '5.1.6 | Despesas Administrativas': {
+        'keywords': ['despesa administrativa', 'administracao', 'administração', 'aluguel', 'energia', 'internet', 'telefone'],
+        'color': '#BA68C8',
+        'icon': '🏢',
         'type': 'expense',
-        'code': '3-02-014'
-    },
-    '3-02-015 Despesas Diversas': {
-        'keywords': ['despesa diversa', 'outras despesas'],
-        'color': '#9FA8DA',
-        'icon': '💳',
-        'type': 'expense',
-        'code': '3-02-015'
-    },
-    '3-02-016 Segurança e Limpeza': {
-        'keywords': ['seguranca', 'segurança', 'limpeza', 'vigilancia', 'vigilância'],
-        'color': '#90CAF9',
-        'icon': '🧹',
-        'type': 'expense',
-        'code': '3-02-016'
-    },
-    '3-02-100 Descontos Concedidos': {
-        'keywords': ['desconto concedido', 'desconto venda'],
-        'color': '#81D4FA',
-        'icon': '🏷️',
-        'type': 'expense',
-        'code': '3-02-100'
-    },
-    '3-02-200 Comissões de Agências': {
-        'keywords': ['comissao agencia', 'comissão agência', 'comissao paga', 'comissão paga'],
-        'color': '#80DEEA',
-        'icon': '💼',
-        'type': 'expense',
-        'code': '3-02-200'
-    },
-    '3-02-300 Taxas de Cartão': {
-        'keywords': ['taxa cartao', 'taxa cartão', 'maquininha', 'adquirente'],
-        'color': '#80CBC4',
-        'icon': '💳',
-        'type': 'expense',
-        'code': '3-02-300'
-    },
-    '3-02-650 Taxa de Emissão de Passagens': {
-        'keywords': ['taxa emissao', 'taxa emissão', 'emissao passagem', 'emissão passagem'],
-        'color': '#A5D6A7',
-        'icon': '🎫',
-        'type': 'expense',
-        'code': '3-02-650'
-    },
-    '3-03-001 Despesas Financeiras': {
-        'keywords': ['despesa financeira', 'juros pagos'],
-        'color': '#C5E1A5',
-        'icon': '📉',
-        'type': 'expense',
-        'code': '3-03-001'
-    },
-
-    # 4 - RECEITAS
-    '4-01-001 Receitas de Comissões': {
-        'keywords': ['receita comissao', 'receita comissão', 'comissao recebida', 'comissão recebida'],
-        'color': '#4CAF50',
-        'icon': '💰',
-        'type': 'revenue',
-        'code': '4-01-001-0000001'
-    },
-    '4-01-001 Receitas de Overnight': {
-        'keywords': ['overnight', 'open market', 'aplicacao overnight', 'aplicação overnight'],
-        'color': '#66BB6A',
-        'icon': '📈',
-        'type': 'revenue',
-        'code': '4-01-001-0000010'
-    },
-    '4-01-001 Markup sobre Vendas': {
-        'keywords': ['markup', 'margem', 'lucro venda'],
-        'color': '#81C784',
-        'icon': '💵',
-        'type': 'revenue',
-        'code': '4-01-001-0000100'
-    },
-    '4-01-001 Taxas DU': {
-        'keywords': ['taxa du', 'intermediacao', 'intermediação'],
-        'color': '#A5D6A7',
-        'icon': '💼',
-        'type': 'revenue',
-        'code': '4-01-001-0000300'
-    },
-    '4-01-002 Receitas de Diferenças': {
-        'keywords': ['diferenca reconciliacao', 'diferença reconciliação', 'ajuste'],
-        'color': '#C8E6C9',
-        'icon': '🔄',
-        'type': 'revenue',
-        'code': '4-01-002-0000001'
-    },
-    '4-01-004 FEE': {
-        'keywords': ['fee', 'taxa fee'],
-        'color': '#E8F5E9',
-        'icon': '💎',
-        'type': 'revenue',
-        'code': '4-01-004-0000001'
-    },
-    '4-01-004 Taxas de Serviços': {
-        'keywords': ['taxa servico', 'taxa serviço', 'servico prestado', 'serviço prestado'],
-        'color': '#DCEDC8',
-        'icon': '🔧',
-        'type': 'revenue',
-        'code': '4-01-004-0000002'
-    },
-    '4-01-120 Operação Própria - Receitas': {
-        'keywords': ['operacao propria', 'operação própria', 'receita propria', 'receita própria'],
-        'color': '#C5E1A5',
-        'icon': '✈️',
-        'type': 'revenue',
-        'code': '4-01-120'
-    },
-    '4-02-001 Receitas Financeiras': {
-        'keywords': ['receita financeira', 'juros recebido', 'rendimento'],
-        'color': '#AED581',
-        'icon': '💹',
-        'type': 'revenue',
-        'code': '4-02-001'
+        'code': '5.1.6'
     },
 
     'Uncategorized': {
