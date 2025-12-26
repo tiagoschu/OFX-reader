@@ -16,6 +16,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from utils.config import config
+from utils.dre_structures import get_dre_structure
 
 
 class DRETab(QWidget):
@@ -25,7 +26,22 @@ class DRETab(QWidget):
         super().__init__()
         self.df = None
         self.dre_data = {}
+        self.category_preset = 'business'  # Default preset
+        self.dre_structure = get_dre_structure(self.category_preset)
         self.init_ui()
+
+    def set_category_preset(self, preset):
+        """Set the category preset and update DRE structure"""
+        self.category_preset = preset
+        self.dre_structure = get_dre_structure(preset)
+
+        # Update title if header exists
+        if hasattr(self, 'header_title'):
+            self.header_title.setText(f"📊 {self.dre_structure['title']}")
+
+        # Recalculate if we have data
+        if self.df is not None and not self.df.empty:
+            self.calculate_dre()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -45,9 +61,9 @@ class DRETab(QWidget):
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(15, 10, 15, 10)
 
-        title = QLabel("📊 DRE - Demonstração do Resultado do Exercício")
-        title.setStyleSheet("color: white; font-size: 14px; font-weight: bold; background: transparent;")
-        header_layout.addWidget(title)
+        self.header_title = QLabel(f"📊 {self.dre_structure['title']}")
+        self.header_title.setStyleSheet("color: white; font-size: 14px; font-weight: bold; background: transparent;")
+        header_layout.addWidget(self.header_title)
 
         self.period_label = QLabel("Selecione um período")
         self.period_label.setStyleSheet("color: #BBDEFB; font-size: 10px; background: transparent;")
@@ -290,80 +306,68 @@ class DRETab(QWidget):
         return df_copy[mask]
 
     def compute_dre(self, df):
-        """Compute DRE values from transaction data"""
+        """Compute DRE values from transaction data using dynamic structure"""
         dre = {}
+
+        if df.empty or 'categoria' not in df.columns:
+            # Return empty DRE if no data or categories
+            for item in self.dre_structure['items']:
+                dre[item['key']] = 0
+            return dre
 
         # Separate income and expenses
         receitas = df[df['valor'] > 0]
         despesas = df[df['valor'] < 0]
 
-        # 1. Receita Bruta
-        if 'categoria' in df.columns:
-            receita_vendas = receitas[receitas['categoria'].str.contains('Receita', case=False, na=False)]['valor'].sum()
-        else:
-            receita_vendas = receitas['valor'].sum()
+        # Process each item in the DRE structure
+        for item in self.dre_structure['items']:
+            item_type = item['type']
 
-        dre['receita_bruta'] = receita_vendas
+            if item_type == 'calculated':
+                # Calculated items use formula
+                if 'formula' in item:
+                    dre[item['key']] = item['formula'](dre)
+                else:
+                    dre[item['key']] = 0
 
-        # 2. Deduções (impostos sobre vendas)
-        if 'categoria' in df.columns:
-            deducoes = despesas[despesas['categoria'].str.contains('Imposto|Taxa', case=False, na=False)]['valor'].sum()
-        else:
-            deducoes = 0
+            elif item_type == 'revenue':
+                # Sum revenues matching categories
+                categories = item.get('categories', [])
+                total = 0
 
-        dre['deducoes'] = abs(deducoes)
+                for category in categories:
+                    # Match by category name or code
+                    mask = receitas['categoria'].str.contains(category, case=False, na=False, regex=False)
+                    total += receitas[mask]['valor'].sum()
 
-        # 3. Receita Líquida
-        dre['receita_liquida'] = dre['receita_bruta'] - dre['deducoes']
+                dre[item['key']] = total
 
-        # 4. CMV/CPV (Custo de Mercadorias/Produtos Vendidos)
-        if 'categoria' in df.columns:
-            cmv = despesas[despesas['categoria'].str.contains('CMV|Custo|Produção', case=False, na=False)]['valor'].sum()
-        else:
-            cmv = 0
+            elif item_type == 'expense':
+                # Sum expenses matching categories
+                categories = item.get('categories', [])
+                total = 0
 
-        dre['cmv'] = abs(cmv)
+                for category in categories:
+                    # Match by category name or code
+                    mask = despesas['categoria'].str.contains(category, case=False, na=False, regex=False)
+                    total += despesas[mask]['valor'].sum()
 
-        # 5. Lucro Bruto
-        dre['lucro_bruto'] = dre['receita_liquida'] - dre['cmv']
+                dre[item['key']] = abs(total)
 
-        # 6. Despesas Operacionais
-        if 'categoria' in df.columns:
-            desp_op = despesas[despesas['categoria'].str.contains(
-                'Despesa|Pessoal|Aluguel|Marketing|Tecnologia|Utilidades|Escritório|Honorários|Viagem|Manutenção',
-                case=False, na=False
-            )]['valor'].sum()
-        else:
-            desp_op = despesas['valor'].sum()
+            elif item_type == 'mixed':
+                # Mixed (revenues - expenses) for categories
+                categories = item.get('categories', [])
+                revenue_total = 0
+                expense_total = 0
 
-        dre['despesas_operacionais'] = abs(desp_op)
+                for category in categories:
+                    revenue_mask = receitas['categoria'].str.contains(category, case=False, na=False, regex=False)
+                    expense_mask = despesas['categoria'].str.contains(category, case=False, na=False, regex=False)
 
-        # 7. Lucro Operacional
-        dre['lucro_operacional'] = dre['lucro_bruto'] - dre['despesas_operacionais']
+                    revenue_total += receitas[revenue_mask]['valor'].sum()
+                    expense_total += despesas[expense_mask]['valor'].sum()
 
-        # 8. Resultado Financeiro
-        if 'categoria' in df.columns:
-            receitas_fin = receitas[receitas['categoria'].str.contains('Financeira|Juros recebido|Rendimento', case=False, na=False)]['valor'].sum()
-            despesas_fin = despesas[despesas['categoria'].str.contains('Financeira|Juros pagos|Bancária', case=False, na=False)]['valor'].sum()
-        else:
-            receitas_fin = 0
-            despesas_fin = 0
-
-        dre['resultado_financeiro'] = receitas_fin - abs(despesas_fin)
-
-        # 9. Lucro antes do IR
-        dre['lucro_antes_ir'] = dre['lucro_operacional'] + dre['resultado_financeiro']
-
-        # 10. IR/CSLL
-        if 'categoria' in df.columns:
-            ir_csll = despesas[despesas['categoria'].str.contains('IRPJ|CSLL|Imposto', case=False, na=False)]['valor'].sum()
-        else:
-            ir_csll = 0
-
-        dre['ir_csll'] = abs(ir_csll)
-
-        # 11. Lucro Líquido
-        dre['lucro_liquido'] = dre['lucro_antes_ir'] - dre['ir_csll']
+                dre[item['key']] = revenue_total - abs(expense_total)
 
         return dre
 
@@ -389,34 +393,22 @@ class DRETab(QWidget):
             self.add_dre_row(*row_data)
 
     def populate_dre_table(self):
-        """Populate table with calculated DRE values"""
+        """Populate table with calculated DRE values using dynamic structure"""
         self.table.setRowCount(0)
 
         d = self.dre_data
 
-        rows = [
-            ("RECEITA BRUTA", d.get('receita_bruta', 0), True, '#4CAF50'),
-            ("(-) Deduções e Impostos sobre Vendas", d.get('deducoes', 0), False, None),
-            ("(=) RECEITA LÍQUIDA", d.get('receita_liquida', 0), True, '#66BB6A'),
-            ("(-) Custo das Mercadorias Vendidas (CMV)", d.get('cmv', 0), False, None),
-            ("(=) LUCRO BRUTO", d.get('lucro_bruto', 0), True, '#81C784'),
-            ("(-) Despesas Operacionais", d.get('despesas_operacionais', 0), False, None),
-            ("(=) LUCRO OPERACIONAL", d.get('lucro_operacional', 0), True, '#FFA726'),
-            ("(+/-) Resultado Financeiro", d.get('resultado_financeiro', 0), False, None),
-            ("(=) LUCRO ANTES DO IR", d.get('lucro_antes_ir', 0), True, '#FFB74D'),
-            ("(-) IR e CSLL", d.get('ir_csll', 0), False, None),
-            ("(=) LUCRO LÍQUIDO DO EXERCÍCIO", d.get('lucro_liquido', 0), True, '#1976D2'),
-        ]
-
-        # Filter out rows with zero values (but keep totals)
-        # Only hide intermediate items (non-totals) that have zero value
-        for row_data in rows:
-            description, value, is_total, bg_color = row_data
+        # Build rows from structure
+        for item in self.dre_structure['items']:
+            label = item['label']
+            value = d.get(item['key'], 0)
+            is_total = item['is_total']
+            bg_color = item.get('color')
 
             # Show all totals (is_total=True) regardless of value
             # For non-totals, only show if value is not zero (with small tolerance for floating point)
             if is_total or abs(value) > 0.01:
-                self.add_dre_row(description, value, is_total, bg_color)
+                self.add_dre_row(label, value, is_total, bg_color)
 
     def add_dre_row(self, description, value, is_total, bg_color):
         """Add a row to the DRE table"""
@@ -517,7 +509,9 @@ class DRETab(QWidget):
                 spaceAfter=20,
                 alignment=TA_CENTER
             )
-            story.append(Paragraph("DRE - Demonstração do Resultado do Exercício", title_style))
+            # Use dynamic title from DRE structure
+            dre_title = self.dre_structure.get('title', 'DRE - Demonstração do Resultado do Exercício')
+            story.append(Paragraph(dre_title, title_style))
 
             # Period and date
             period = f"Período: {self.date_from.date().toString('dd/MM/yyyy')} a {self.date_to.date().toString('dd/MM/yyyy')}"
@@ -528,20 +522,13 @@ class DRETab(QWidget):
             # DRE Table
             d = self.dre_data
 
-            # Build table data with filtering (same logic as populate_dre_table)
-            rows = [
-                ('RECEITA BRUTA', d.get('receita_bruta', 0), True),
-                ('(-) Deduções e Impostos', d.get('deducoes', 0), False),
-                ('(=) RECEITA LÍQUIDA', d.get('receita_liquida', 0), True),
-                ('(-) CMV', d.get('cmv', 0), False),
-                ('(=) LUCRO BRUTO', d.get('lucro_bruto', 0), True),
-                ('(-) Despesas Operacionais', d.get('despesas_operacionais', 0), False),
-                ('(=) LUCRO OPERACIONAL', d.get('lucro_operacional', 0), True),
-                ('(+/-) Resultado Financeiro', d.get('resultado_financeiro', 0), False),
-                ('(=) LUCRO ANTES DO IR', d.get('lucro_antes_ir', 0), True),
-                ('(-) IR e CSLL', d.get('ir_csll', 0), False),
-                ('(=) LUCRO LÍQUIDO', d.get('lucro_liquido', 0), True),
-            ]
+            # Build table data dynamically from DRE structure (same logic as populate_dre_table)
+            rows = []
+            for item in self.dre_structure['items']:
+                label = item['label']
+                value = d.get(item['key'], 0)
+                is_total = item['is_total']
+                rows.append((label, value, is_total))
 
             # Header
             table_data = [['Descrição', 'Valor (R$)']]

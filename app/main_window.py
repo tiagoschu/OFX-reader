@@ -191,6 +191,12 @@ class MainWindow(QMainWindow):
             # Set category preset for import tab (used when importing new data)
             self.tab_import.set_category_preset(category_preset)
 
+            # Set category preset for DRE tab (affects DRE structure)
+            self.tab_dre.set_category_preset(category_preset)
+
+            # Set category preset for Categories tab (for recategorization)
+            self.tab_categories.set_category_preset(category_preset)
+
     def load_from_project(self):
         """Load data from current project"""
         df = self.project.get_dataframe()

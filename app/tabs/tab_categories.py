@@ -540,6 +540,7 @@ class CategoriesTab(QWidget):
         self.custom_categories = config.get('custom_categories', {})
         self.categories.update(self.custom_categories)
         self.df = None
+        self.category_preset = None  # Will be set by MainWindow when project is loaded
         self.init_ui()
 
     def init_ui(self):
@@ -611,6 +612,25 @@ class CategoriesTab(QWidget):
         """)
         btn_reset.clicked.connect(self.reset_categories)
         controls_layout.addWidget(btn_reset)
+
+        btn_recategorize = QPushButton("🔁 Recategorizar Tudo")
+        btn_recategorize.setStyleSheet("""
+            QPushButton {
+                background-color: #9C27B0;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #7B1FA2;
+            }
+        """)
+        btn_recategorize.setToolTip("Recategoriza todas as transações usando o plano de categorias atual")
+        btn_recategorize.clicked.connect(self.recategorize_all)
+        controls_layout.addWidget(btn_recategorize)
 
         btn_expand_all = QPushButton("📂 Expandir Todas")
         btn_expand_all.setStyleSheet("""
@@ -819,3 +839,57 @@ class CategoriesTab(QWidget):
             config.set('custom_categories', {})
             self.refresh_categories()
             QMessageBox.information(self, "Sucesso", "Categorias restauradas!")
+
+    def set_category_preset(self, preset):
+        """Set the category preset to use for recategorization"""
+        self.category_preset = preset
+
+    def recategorize_all(self):
+        """Recategorize all transactions using the current category preset"""
+        if self.df is None or self.df.empty:
+            QMessageBox.warning(
+                self,
+                "Sem Dados",
+                "Não há transações para recategorizar.\nImporte arquivos OFX primeiro."
+            )
+            return
+
+        # Confirm action
+        reply = QMessageBox.question(
+            self,
+            "Recategorizar Tudo",
+            "Tem certeza que deseja recategorizar todas as transações?\n\n"
+            "Isso irá aplicar as regras de categorização do plano atual\n"
+            "e pode alterar categorias atribuídas manualmente.\n\n"
+            f"Total de transações: {len(self.df)}",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.No:
+            return
+
+        try:
+            # Create categorizer with current preset
+            categorizer = TransactionCategorizer(category_preset=self.category_preset)
+
+            # Recategorize dataframe
+            self.df = categorizer.categorize_dataframe(self.df)
+
+            # Refresh display
+            self.refresh_categories()
+
+            QMessageBox.information(
+                self,
+                "Sucesso",
+                f"Todas as {len(self.df)} transações foram recategorizadas com sucesso!\n\n"
+                "As alterações foram aplicadas aos dados em memória.\n"
+                "Não esqueça de salvar o projeto para manter as mudanças."
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erro",
+                f"Erro ao recategorizar transações:\n{str(e)}"
+            )
