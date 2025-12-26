@@ -127,24 +127,31 @@ class ProjectConfigDialog(QDialog):
 
         self.cb_business_sector.setStyleSheet("""
             QComboBox {
-                font-size: 11px;
-                padding: 10px;
-                border: 1px solid #CFD8DC;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 12px;
+                border: 2px solid #CFD8DC;
                 border-radius: 4px;
-                min-height: 35px;
+                min-height: 40px;
             }
             QComboBox::drop-down {
                 border: none;
-                width: 30px;
+                width: 35px;
             }
             QComboBox::down-arrow {
-                image: none;
-                border: none;
+                width: 12px;
+                height: 12px;
             }
             QComboBox QAbstractItemView {
-                font-size: 11px;
-                padding: 5px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px;
                 selection-background-color: #E3F2FD;
+                selection-color: #000;
+            }
+            QComboBox QAbstractItemView::item {
+                min-height: 40px;
+                padding: 10px;
             }
         """)
         self.cb_business_sector.currentIndexChanged.connect(self.on_business_sector_changed)
@@ -214,7 +221,7 @@ class ProjectConfigDialog(QDialog):
             "automaticamente de acordo com o tipo de pessoa e ramo de negócio selecionados. "
             "Você pode recategorizar os dados a qualquer momento na aba Categorias."
         )
-        info_label.setStyleSheet("font-size: 9px; color: #F57F17; background: transparent;")
+        info_label.setStyleSheet("font-size: 11px; color: #F57F17; background: transparent; font-weight: bold;")
         info_label.setWordWrap(True)
         info_layout.addWidget(info_label)
 
@@ -331,8 +338,8 @@ class ProjectConfigDialog(QDialog):
             self.auto_config_info.setText(config_text)
 
     def show_preview(self):
-        """Show preview of categories and DRE structure"""
-        from PyQt5.QtWidgets import QTabWidget, QTextBrowser
+        """Show preview of categories and DRE structure with full list"""
+        from PyQt5.QtWidgets import QTabWidget, QTextBrowser, QScrollArea, QTableWidget, QTableWidgetItem, QHeaderView
         from utils.dre_structures import get_dre_structure
 
         if not self.category_preset or self.category_preset not in CATEGORY_PRESETS:
@@ -343,65 +350,141 @@ class ProjectConfigDialog(QDialog):
         # Create preview dialog
         preview_dialog = QDialog(self)
         preview_dialog.setWindowTitle(f"Preview: {preset_info['name']}")
-        preview_dialog.setMinimumSize(700, 600)
+        preview_dialog.setMinimumSize(900, 700)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(15, 15, 15, 15)
 
         # Header
         header = QLabel(f"📋 {preset_info['name']}")
-        header.setFont(QFont("Arial", 12, QFont.Bold))
-        header.setStyleSheet("color: #1976D2; padding: 10px;")
+        header.setFont(QFont("Arial", 14, QFont.Bold))
+        header.setStyleSheet("color: #1976D2; padding: 10px; background: #E3F2FD; border-radius: 4px;")
         layout.addWidget(header)
+
+        subtitle = QLabel(f"Total: {len(preset_info['categories'])} categorias pré-configuradas")
+        subtitle.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
+        layout.addWidget(subtitle)
 
         # Tabs
         tabs = QTabWidget()
+        tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #CFD8DC;
+                border-radius: 4px;
+            }
+            QTabBar::tab {
+                background: #F5F5F5;
+                padding: 10px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QTabBar::tab:selected {
+                background: #2196F3;
+                color: white;
+            }
+        """)
 
-        # Categories tab
-        categories_browser = QTextBrowser()
-        categories_html = "<h3>Categorias Pré-configuradas</h3>"
-        categories_html += f"<p><b>Total:</b> {len(preset_info['categories'])} categorias</p><hr>"
+        # Categories table - Show ALL categories
+        categories_table = QTableWidget()
+        categories_table.setColumnCount(4)
+        categories_table.setHorizontalHeaderLabels(['Categoria', 'Tipo', 'Keywords', 'Ícone'])
+        categories_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        categories_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        categories_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        categories_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        categories_table.setAlternatingRowColors(True)
+        categories_table.setStyleSheet("""
+            QTableWidget {
+                font-size: 11px;
+                gridline-color: #E0E0E0;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QHeaderView::section {
+                background-color: #2196F3;
+                color: white;
+                padding: 10px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+        """)
 
-        for cat_name, cat_data in sorted(preset_info['categories'].items())[:30]:  # Show first 30
-            icon = cat_data.get('icon', '📁')
+        # Populate ALL categories
+        categories_table.setRowCount(len(preset_info['categories']))
+        for row, (cat_name, cat_data) in enumerate(sorted(preset_info['categories'].items())):
+            # Category name
+            name_item = QTableWidgetItem(cat_name)
+            categories_table.setItem(row, 0, name_item)
+
+            # Type
             cat_type = cat_data.get('type', 'other')
-            keywords_count = len(cat_data.get('keywords', []))
-            categories_html += f"<p><b>{icon} {cat_name}</b><br>"
-            categories_html += f"<small>Tipo: {cat_type} | {keywords_count} palavras-chave</small></p>"
+            type_item = QTableWidgetItem(cat_type)
+            categories_table.setItem(row, 1, type_item)
 
-        if len(preset_info['categories']) > 30:
-            categories_html += f"<p><i>... e mais {len(preset_info['categories']) - 30} categorias</i></p>"
+            # Keywords
+            keywords = cat_data.get('keywords', [])
+            keywords_text = ', '.join(keywords[:5])  # Show first 5
+            if len(keywords) > 5:
+                keywords_text += f' ... (+{len(keywords)-5})'
+            keywords_item = QTableWidgetItem(keywords_text)
+            categories_table.setItem(row, 2, keywords_item)
 
-        categories_browser.setHtml(categories_html)
-        tabs.addTab(categories_browser, "📂 Categorias")
+            # Icon
+            icon_item = QTableWidgetItem(cat_data.get('icon', '📁'))
+            categories_table.setItem(row, 3, icon_item)
 
-        # DRE tab
+        tabs.addTab(categories_table, "📂 Categorias (TODAS)")
+
+        # DRE tab with better formatting
         dre_browser = QTextBrowser()
+        dre_browser.setStyleSheet("font-size: 12px; padding: 10px;")
         dre_structure = get_dre_structure(self.category_preset)
-        dre_html = f"<h3>{dre_structure['title']}</h3><hr>"
+        dre_html = f"<h2 style='color: #1976D2;'>{dre_structure['title']}</h2><hr>"
+        dre_html += "<div style='font-family: monospace; line-height: 1.8;'>"
 
         for item in dre_structure['items']:
             if item['is_total']:
-                dre_html += f"<p><b style='color: #1976D2;'>{item['label']}</b></p>"
+                dre_html += f"<p style='font-weight: bold; color: #1976D2; font-size: 13px;'>{item['label']}</p>"
             else:
-                dre_html += f"<p>&nbsp;&nbsp;{item['label']}</p>"
+                dre_html += f"<p style='padding-left: 20px; color: #424242;'>{item['label']}</p>"
 
+        dre_html += "</div>"
         dre_browser.setHtml(dre_html)
         tabs.addTab(dre_browser, "💼 Estrutura DRE")
 
         layout.addWidget(tabs)
 
+        # Info note
+        note = QLabel("ℹ️ Estas categorias serão aplicadas automaticamente. Você poderá recategorizar depois na aba Categorias.")
+        note.setStyleSheet("""
+            background: #E3F2FD;
+            padding: 10px;
+            border-left: 4px solid #2196F3;
+            color: #1976D2;
+            font-size: 10px;
+            border-radius: 4px;
+        """)
+        note.setWordWrap(True)
+        layout.addWidget(note)
+
         # Close button
-        btn_close = QPushButton("Fechar")
+        btn_close = QPushButton("✓ Entendi - Fechar")
         btn_close.setStyleSheet("""
             QPushButton {
-                background-color: #757575;
+                background-color: #4CAF50;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 10px 20px;
+                padding: 12px 25px;
+                font-size: 11px;
+                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #616161;
+                background-color: #45A049;
             }
         """)
         btn_close.clicked.connect(preview_dialog.accept)
