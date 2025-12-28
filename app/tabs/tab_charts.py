@@ -66,6 +66,8 @@ class ChartWidget(QFrame):
     def set_chart(self, fig):
         """Set Plotly figure to display"""
         try:
+            print(f"[CHARTS] set_chart() called for '{self.title}'")
+
             # Use include_plotlyjs=True to embed the library (works offline, no CDN issues)
             # Full page mode for better rendering
             html = fig.to_html(
@@ -78,9 +80,16 @@ class ChartWidget(QFrame):
                 full_html=True,
                 validate=True
             )
+
+            print(f"[CHARTS] HTML generated, length: {len(html)} characters")
+
             # Set HTML with base URL to ensure proper resource loading
             self.web_view.setHtml(html, QUrl("file:///"))
+
+            print(f"[CHARTS] Chart '{self.title}' rendered successfully")
+
         except Exception as e:
+            print(f"[CHARTS] ERROR rendering chart '{self.title}': {str(e)}")
             self.show_message(f"Erro ao renderizar gráfico: {str(e)}")
 
     def show_message(self, message):
@@ -244,11 +253,16 @@ class ChartsTab(QWidget):
 
     def update_data(self, df):
         """Update charts with new data"""
+        print(f"[CHARTS] update_data() called - df is None: {df is None}, df empty: {df.empty if df is not None else 'N/A'}")
+
         self.df = df
 
         if df is None or df.empty:
+            print("[CHARTS] No data available, showing placeholder")
             self.show_placeholder()
             return
+
+        print(f"[CHARTS] Data received: {len(df)} rows, columns: {df.columns.tolist()}")
 
         # Generate all charts
         self.generate_charts()
@@ -262,20 +276,31 @@ class ChartsTab(QWidget):
 
     def generate_charts(self):
         """Generate all chart visualizations"""
+        print("[CHARTS] generate_charts() called")
+
         if self.df is None or self.df.empty:
+            print("[CHARTS] No data to generate charts")
             return
 
+        print("[CHARTS] Generating all charts...")
+
         # 1. Timeline chart
+        print("[CHARTS] Generating timeline chart...")
         self.generate_timeline_chart()
 
         # 2. Categories pie chart
+        print("[CHARTS] Generating categories chart...")
         self.generate_categories_chart()
 
         # 3. Banks comparison
+        print("[CHARTS] Generating banks chart...")
         self.generate_banks_chart()
 
         # 4. Monthly evolution
+        print("[CHARTS] Generating monthly chart...")
         self.generate_monthly_chart()
+
+        print("[CHARTS] All charts generated successfully")
 
     def generate_timeline_chart(self):
         """Generate timeline evolution chart"""
@@ -515,6 +540,8 @@ class ChartsTab(QWidget):
 
     def update_charts_display(self):
         """Update which charts are displayed based on selection"""
+        print("[CHARTS] update_charts_display() called")
+
         # Clear layout
         for i in reversed(range(self.charts_layout.count())):
             widget = self.charts_layout.itemAt(i).widget()
@@ -522,21 +549,28 @@ class ChartsTab(QWidget):
                 widget.setParent(None)
 
         if self.df is None or self.df.empty:
+            print("[CHARTS] No data, showing placeholder")
             self.show_placeholder()
             return
 
         selected = self.chart_selector.currentData()
+        print(f"[CHARTS] Selected view: {selected}")
 
         if selected == "all" or selected == "timeline":
+            print("[CHARTS] Adding timeline chart to layout")
             self.charts_layout.addWidget(self.chart_timeline)
 
         if selected == "all" or selected == "categories":
+            print("[CHARTS] Adding categories chart to layout")
             self.charts_layout.addWidget(self.chart_categories)
 
         if selected == "all" or selected == "banks":
+            print("[CHARTS] Adding banks chart to layout")
             self.charts_layout.addWidget(self.chart_banks)
 
         if selected == "all" or selected == "monthly":
+            print("[CHARTS] Adding monthly chart to layout")
             self.charts_layout.addWidget(self.chart_monthly)
 
         self.charts_layout.addStretch()
+        print("[CHARTS] Charts display updated")
