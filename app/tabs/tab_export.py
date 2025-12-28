@@ -30,14 +30,22 @@ class ExportThread(QThread):
 
     def run(self):
         try:
-            exporter = DataExporter(self.df)
+            # Prepare DataFrame based on options
+            df_export = self.df.copy()
+
+            # Remove time column if requested
+            if not self.options.get('include_time', True):
+                if 'hora' in df_export.columns:
+                    df_export = df_export.drop(columns=['hora'])
+
+            exporter = DataExporter(df_export)
             self.progress.emit(f"Exportando para {self.export_format.upper()}...")
 
             success = False
             if self.export_format == 'csv':
-                success = exporter.export_csv(self.file_path, include_time=self.options.get('include_time', True))
+                success = exporter.export_csv(self.file_path)
             elif self.export_format == 'excel':
-                success = exporter.export_excel(self.file_path, include_time=self.options.get('include_time', True))
+                success = exporter.export_excel(self.file_path)
             elif self.export_format == 'json':
                 success = exporter.export_json(self.file_path)
             elif self.export_format == 'ofx':
