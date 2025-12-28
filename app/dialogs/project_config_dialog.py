@@ -482,7 +482,7 @@ class ProjectConfigDialog(QDialog):
         table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
         table.setAlternatingRowColors(True)
-        table.setEditTriggers(QAbstractItemView.DoubleClick | QAbstractItemView.EditKeyPressed)
+        table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
         table.setStyleSheet("""
             QTableWidget {
                 font-size: 11px;
