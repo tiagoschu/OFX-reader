@@ -6,3 +6,4 @@ PyQt5>=5.15.0
 PyQtWebEngine>=5.15.0
 matplotlib>=3.7.0
 reportlab>=4.0.0
+pdfplumber>=0.10.0

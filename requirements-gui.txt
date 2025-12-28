@@ -13,6 +13,9 @@ PyQt5-sip>=12.0.0
 # Matplotlib for charts (offline, no firewall issues)
 matplotlib>=3.7.0
 
+# PDF parsing (for NFSe invoices)
+pdfplumber>=0.10.0
+
 # PDF generation
 fpdf2>=2.7.0
 

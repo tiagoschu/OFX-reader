@@ -288,12 +288,12 @@ class InvoicesTab(QWidget):
         return table_group
 
     def import_invoices(self):
-        """Import invoice XML files"""
+        """Import invoice files (XML, CSV, PDF)"""
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Selecionar Arquivos XML de Notas Fiscais",
+            "Selecionar Arquivos de Notas Fiscais",
             "",
-            "XML Files (*.xml);;All Files (*.*)"
+            "Todos NFSe (*.xml *.csv *.pdf);;XML Files (*.xml);;CSV Files (*.csv);;PDF Files (*.pdf);;All Files (*.*)"
         )
 
         if not files:
