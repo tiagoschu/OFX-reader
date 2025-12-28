@@ -13,15 +13,12 @@ import io
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-try:
-    import matplotlib
-    matplotlib.use('Agg')  # Non-interactive backend
-    import matplotlib.pyplot as plt
-    from matplotlib.figure import Figure
-    import matplotlib.dates as mdates
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
+# Import matplotlib (required dependency)
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+import matplotlib.dates as mdates
 
 
 class ChartWidget(QFrame):
@@ -135,15 +132,6 @@ class ChartsTab(QWidget):
         header_layout.addWidget(subtitle)
         header_frame.setLayout(header_layout)
         main_layout.addWidget(header_frame)
-
-        # Check if Matplotlib is available
-        if not MATPLOTLIB_AVAILABLE:
-            error_label = QLabel("⚠️ Matplotlib não instalado. Execute: pip install matplotlib")
-            error_label.setStyleSheet("color: #F44336; font-size: 12px; padding: 20px;")
-            error_label.setAlignment(Qt.AlignCenter)
-            main_layout.addWidget(error_label)
-            self.setLayout(main_layout)
-            return
 
         # Controls
         controls_frame = QFrame()
@@ -332,7 +320,8 @@ class ChartsTab(QWidget):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.chart_timeline.show_message(f"Erro ao gerar gráfico: {str(e)}")
+            if hasattr(self, 'chart_timeline'):
+                self.chart_timeline.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_categories_chart(self):
         """Generate categories distribution pie chart"""
@@ -388,7 +377,8 @@ class ChartsTab(QWidget):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.chart_categories.show_message(f"Erro ao gerar gráfico: {str(e)}")
+            if hasattr(self, 'chart_categories'):
+                self.chart_categories.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_banks_chart(self):
         """Generate banks comparison bar chart"""
@@ -428,7 +418,8 @@ class ChartsTab(QWidget):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.chart_banks.show_message(f"Erro ao gerar gráfico: {str(e)}")
+            if hasattr(self, 'chart_banks'):
+                self.chart_banks.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_monthly_chart(self):
         """Generate monthly balance evolution"""
@@ -497,7 +488,8 @@ class ChartsTab(QWidget):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.chart_monthly.show_message(f"Erro ao gerar gráfico: {str(e)}")
+            if hasattr(self, 'chart_monthly'):
+                self.chart_monthly.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def update_charts_display(self):
         """Update which charts are displayed based on selection"""
