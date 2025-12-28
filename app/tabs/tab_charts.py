@@ -80,10 +80,9 @@ class ChartWidget(QFrame):
         try:
             print(f"[CHARTS] set_chart() called for '{self.title}'")
 
-            # Use include_plotlyjs=True to embed the library (works offline, no CDN issues)
-            # Full page mode for better rendering
+            # Use CDN version - works better with QWebEngine than embedded
             html = fig.to_html(
-                include_plotlyjs=True,
+                include_plotlyjs='cdn',
                 config={
                     'responsive': True,
                     'displayModeBar': True,
@@ -93,7 +92,7 @@ class ChartWidget(QFrame):
                 validate=True
             )
 
-            print(f"[CHARTS] HTML generated, length: {len(html)} characters")
+            print(f"[CHARTS] HTML generated (using CDN), length: {len(html)} characters")
 
             # ALTERNATIVE APPROACH: Save to temp file and load via URL
             # This often works better than setHtml for large HTML content
