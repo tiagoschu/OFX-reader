@@ -995,8 +995,6 @@ CATEGORIES_TRAVEL_AGENCY = {
     }
 }
 
-}
-
 # Category presets
 CATEGORY_PRESETS = {
     'personal': {
