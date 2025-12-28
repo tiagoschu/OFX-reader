@@ -23,6 +23,8 @@ class Project:
             'dataframe': None,
             'duplicates': [],
             'custom_categories': {},  # Custom user categorizations
+            'invoices_df': None,  # NFSe invoices dataframe
+            'invoice_matches_df': None,  # Invoice matching results
             'config': {
                 'person_type': 'fisica',  # 'fisica' or 'juridica'
                 'business_sector': None,  # For juridica: 'travel_agency', 'retail', etc.
@@ -32,12 +34,13 @@ class Project:
                 'name': 'Projeto Sem Título',
                 'description': '',
                 'total_transactions': 0,
+                'total_invoices': 0,
                 'banks': [],
                 'date_range': None,
             }
         }
 
-    def save(self, file_path, df=None, duplicates=None, custom_categories=None, config=None, metadata=None):
+    def save(self, file_path, df=None, duplicates=None, custom_categories=None, invoices_df=None, invoice_matches_df=None, config=None, metadata=None):
         """
         Save project to file
 
@@ -46,6 +49,8 @@ class Project:
             df: DataFrame with transactions
             duplicates: List of duplicate transactions
             custom_categories: Dict of custom categorizations
+            invoices_df: DataFrame with NFSe invoices
+            invoice_matches_df: DataFrame with invoice matching results
             config: Configuration dict
             metadata: Project metadata dict
         """
@@ -69,6 +74,16 @@ class Project:
 
         if custom_categories is not None:
             self.data['custom_categories'] = custom_categories
+
+        if invoices_df is not None:
+            self.data['invoices_df'] = invoices_df
+
+            # Auto-update metadata from invoices DataFrame
+            if not invoices_df.empty:
+                self.data['metadata']['total_invoices'] = len(invoices_df)
+
+        if invoice_matches_df is not None:
+            self.data['invoice_matches_df'] = invoice_matches_df
 
         if config is not None:
             self.data['config'].update(config)
@@ -141,6 +156,14 @@ class Project:
         """Get project metadata"""
         return self.data.get('metadata', {})
 
+    def get_invoices(self):
+        """Get NFSe invoices DataFrame"""
+        return self.data.get('invoices_df')
+
+    def get_invoice_matches(self):
+        """Get invoice matching results DataFrame"""
+        return self.data.get('invoice_matches_df')
+
     @staticmethod
     def get_default_projects_dir():
         """Get default directory for projects"""
@@ -190,6 +213,7 @@ class Project:
                 'description': data['metadata'].get('description', ''),
                 'modified_at': data.get('modified_at', ''),
                 'total_transactions': data['metadata'].get('total_transactions', 0),
+                'total_invoices': data['metadata'].get('total_invoices', 0),
                 'banks': data['metadata'].get('banks', []),
                 'date_range': data['metadata'].get('date_range'),
                 'person_type': data['config'].get('person_type', 'fisica'),

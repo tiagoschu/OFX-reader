@@ -20,6 +20,8 @@ from app.tabs.tab_reports import ReportsTab
 from app.tabs.tab_dre import DRETab
 from app.tabs.tab_export import ExportTab
 from app.tabs.tab_config import ConfigTab
+from app.tabs.tab_invoices import InvoicesTab
+from app.tabs.tab_invoice_analysis import InvoiceAnalysisTab
 from core.project import Project
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
@@ -68,6 +70,8 @@ class MainWindow(QMainWindow):
         self.tab_categories = CategoriesTab()
         self.tab_reports = ReportsTab()
         self.tab_dre = DRETab()
+        self.tab_invoices = InvoicesTab()
+        self.tab_invoice_analysis = InvoiceAnalysisTab()
         self.tab_export = ExportTab()
         self.tab_settings = ConfigTab()
 
@@ -79,12 +83,16 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_categories, "🎯 Categorias")
         self.tabs.addTab(self.tab_reports, "📋 Relatórios")
         self.tabs.addTab(self.tab_dre, "💼 DRE")
+        self.tabs.addTab(self.tab_invoices, "📄 Notas Fiscais")
+        self.tabs.addTab(self.tab_invoice_analysis, "🔗 Análise NFSe")
         self.tabs.addTab(self.tab_export, "💾 Exportar")
         self.tabs.addTab(self.tab_settings, "⚙️ Config")
 
         # Connect signals
         self.tab_import.data_processed.connect(self.on_data_processed)
         self.tab_categories.data_recategorized.connect(self.on_data_recategorized)
+        self.tab_invoices.invoices_loaded.connect(self.on_invoices_loaded)
+        self.tab_invoices.match_requested.connect(self.on_match_requested)
 
         # Set central widget
         self.setCentralWidget(self.tabs)
@@ -178,10 +186,32 @@ class MainWindow(QMainWindow):
         # Update DRE tab with data
         self.tab_dre.update_data(df)
 
+        # Update invoices tab with OFX data for matching
+        self.tab_invoices.set_ofx_data(df)
+
+        # Update invoice analysis tab with OFX data
+        self.tab_invoice_analysis.set_data(self.tab_invoices.get_invoices_data(), df)
+
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
 
         self.statusBar().showMessage(f"Processados {len(df)} transações", 5000)
+
+    def on_invoices_loaded(self, invoices_df):
+        """Handle invoices loaded signal"""
+        # Update invoice analysis tab with invoice data
+        self.tab_invoice_analysis.set_data(invoices_df, self.df)
+
+        self.statusBar().showMessage(f"{len(invoices_df)} notas fiscais carregadas", 5000)
+
+    def on_match_requested(self):
+        """Handle match requested - switch to import tab"""
+        self.tabs.setCurrentWidget(self.tab_import)
+        QMessageBox.information(
+            self,
+            "Importar OFX",
+            "Por favor, importe arquivos OFX na aba 'Importar' antes de vincular com notas fiscais."
+        )
 
     def on_data_recategorized(self, df):
         """Handle data recategorized signal from Categories tab"""
@@ -221,6 +251,7 @@ class MainWindow(QMainWindow):
         """Load data from current project"""
         df = self.project.get_dataframe()
         duplicates = self.project.get_duplicates()
+        invoices_df = self.project.get_invoices()
 
         if df is not None and not df.empty:
             # Simulate processor for compatibility
@@ -230,6 +261,11 @@ class MainWindow(QMainWindow):
 
             self.processor = DummyProcessor(duplicates)
             self.on_data_processed(df, self.processor)
+
+            # Load invoices if present
+            if invoices_df is not None and not invoices_df.empty:
+                self.tab_invoices.load_invoices(invoices_df)
+                self.tab_invoice_analysis.set_data(invoices_df, df)
 
             # Update title with project name
             project_name = self.project.get_metadata().get('name', 'Projeto')
@@ -328,6 +364,8 @@ class MainWindow(QMainWindow):
             file_path,
             df=self.df,
             duplicates=self.processor.duplicates if self.processor else [],
+            invoices_df=self.tab_invoices.get_invoices_data(),
+            invoice_matches_df=self.tab_invoices.matches_df if hasattr(self.tab_invoices, 'matches_df') else None,
             metadata=metadata
         )
 
