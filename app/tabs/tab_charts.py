@@ -58,13 +58,25 @@ class ChartWidget(QFrame):
         settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
         settings.setAttribute(QWebEngineSettings.ErrorPageEnabled, True)
         settings.setAttribute(QWebEngineSettings.PluginsEnabled, True)
+        settings.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
+        settings.setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, False)
+
+        # Add load finished handler for debugging
+        self.web_view.loadFinished.connect(self.on_load_finished)
 
         layout.addWidget(self.web_view)
 
         self.setLayout(layout)
 
+    def on_load_finished(self, success):
+        """Handle page load completion"""
+        print(f"[CHARTS] WebView load finished for '{self.title}': success={success}")
+        if not success:
+            print(f"[CHARTS] WARNING: Failed to load content for '{self.title}'")
+
     def set_chart(self, fig):
         """Set Plotly figure to display"""
+        import tempfile
         try:
             print(f"[CHARTS] set_chart() called for '{self.title}'")
 
@@ -83,13 +95,26 @@ class ChartWidget(QFrame):
 
             print(f"[CHARTS] HTML generated, length: {len(html)} characters")
 
-            # Set HTML with base URL to ensure proper resource loading
-            self.web_view.setHtml(html, QUrl("file:///"))
+            # ALTERNATIVE APPROACH: Save to temp file and load via URL
+            # This often works better than setHtml for large HTML content
+            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8')
+            temp_file.write(html)
+            temp_file.close()
 
-            print(f"[CHARTS] Chart '{self.title}' rendered successfully")
+            temp_path = temp_file.name
+            print(f"[CHARTS] Temp file created: {temp_path}")
+
+            # Load from file URL
+            file_url = QUrl.fromLocalFile(temp_path)
+            print(f"[CHARTS] Loading from URL: {file_url.toString()}")
+            self.web_view.load(file_url)
+
+            print(f"[CHARTS] Chart '{self.title}' load initiated")
 
         except Exception as e:
             print(f"[CHARTS] ERROR rendering chart '{self.title}': {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.show_message(f"Erro ao renderizar gráfico: {str(e)}")
 
     def show_message(self, message):
