@@ -377,201 +377,612 @@ CATEGORIES_CHART_OF_ACCOUNTS = {
 # Default category set (for backward compatibility)
 CATEGORIES = CATEGORIES_PERSONAL
 
-# Travel Agency Chart of Accounts (Plano de Contas para Agência de Viagens - WIZTOUR)
-# Estrutura focada em evitar tributação indevida com ênfase no Passivo
+# Travel Agency Categories (Categorias para Agência de Viagens - WIZTOUR)
+# Estrutura completa e profissional baseada na operação real
 CATEGORIES_TRAVEL_AGENCY = {
 
-    # ========== 1 - ATIVO ==========
-    '1 | Ativo': {
-        'keywords': ['ativo'],
+    # ========== RECEITAS - PACOTES COMPLETOS ==========
+    'Pacotes com Estudos': {
+        'keywords': ['pacote estudo', 'intercambio estudo', 'curso ingles', 'high school', 'college'],
         'color': '#4CAF50',
-        'icon': '📊',
-        'type': 'asset',
-        'code': '1'
+        'icon': '📚',
+        'type': 'revenue',
+        'dre_account': 'Receita Bruta de Vendas',
+        'group': 'Pacotes Completos'
     },
-    '1.1 | Ativo Circulante': {
-        'keywords': ['ativo circulante'],
+    'Pacotes Fun Trip': {
+        'keywords': ['fun trip', 'pacote turismo', 'viagem lazer', 'tour grupo'],
         'color': '#66BB6A',
-        'icon': '💹',
-        'type': 'asset',
-        'code': '1.1'
+        'icon': '🎉',
+        'type': 'revenue',
+        'dre_account': 'Receita Bruta de Vendas',
+        'group': 'Pacotes Completos'
     },
-    '1.1.1 | Caixa': {
-        'keywords': ['caixa', 'dinheiro', 'especie', 'moeda'],
+    'Pacotes Culturais': {
+        'keywords': ['pacote cultural', 'intercambio cultural', 'au pair', 'voluntariado'],
         'color': '#81C784',
-        'icon': '💵',
-        'type': 'asset',
-        'code': '1.1.1'
-    },
-    '1.1.2 | Bancos Conta Movimento': {
-        'keywords': ['banco', 'conta corrente', 'conta movimento', 'bradesco', 'itau', 'santander', 'bb', 'caixa economica'],
-        'color': '#A5D6A7',
-        'icon': '🏦',
-        'type': 'asset',
-        'code': '1.1.2'
-    },
-    '1.1.3 | Contas a Receber': {
-        'keywords': ['contas a receber', 'receber', 'cliente', 'duplicata', 'credito a receber'],
-        'color': '#C8E6C9',
-        'icon': '📥',
-        'type': 'asset',
-        'code': '1.1.3'
+        'icon': '🌍',
+        'type': 'revenue',
+        'dre_account': 'Receita Bruta de Vendas',
+        'group': 'Pacotes Completos'
     },
 
-    # ========== 2 - PASSIVO (MAIS IMPORTANTE - evita tributação indevida) ==========
-    '2 | Passivo': {
-        'keywords': ['passivo'],
-        'color': '#FF5252',
-        'icon': '📊',
-        'type': 'liability',
-        'code': '2'
-    },
-    '2.1 | Passivo Circulante': {
-        'keywords': ['passivo circulante'],
-        'color': '#FF6E40',
-        'icon': '📉',
-        'type': 'liability',
-        'code': '2.1'
-    },
-    '2.1.1 | Fornecedores': {
-        'keywords': ['fornecedor', 'contas a pagar', 'pagar', 'companhia aerea', 'hotel', 'operadora'],
-        'color': '#FF7043',
-        'icon': '📤',
-        'type': 'liability',
-        'code': '2.1.1'
-    },
-    '2.1.2 | Receitas Diferidas – Viagens a Realizar': {
-        'keywords': ['receita diferida', 'viagem a realizar', 'antecipacao', 'adiantamento cliente', 'pacote a realizar'],
-        'color': '#FF8A65',
-        'icon': '✈️',
-        'type': 'liability',
-        'code': '2.1.2'
-    },
-    '2.1.3 | Valores de Terceiros a Repassar': {
-        'keywords': ['valores terceiros', 'repassar', 'repasse', 'taxa terceiro', 'valor intermediado'],
-        'color': '#FFAB91',
-        'icon': '🔄',
-        'type': 'liability',
-        'code': '2.1.3'
-    },
-
-    # ========== 3 - PATRIMÔNIO LÍQUIDO ==========
-    '3 | Patrimônio Líquido': {
-        'keywords': ['patrimonio liquido', 'patrimônio líquido'],
-        'color': '#9C27B0',
-        'icon': '💎',
-        'type': 'equity',
-        'code': '3'
-    },
-    '3.1 | Capital Social': {
-        'keywords': ['capital social', 'capital subscrito', 'capital integralizado'],
-        'color': '#AB47BC',
+    # ========== RECEITAS - VENDAS AVULSO ==========
+    'Vendas Avulso com Markup': {
+        'keywords': ['venda avulsa', 'servico avulso', 'markup', 'margem'],
+        'color': '#AED581',
         'icon': '💰',
-        'type': 'equity',
-        'code': '3.1'
-    },
-    '3.2 | Lucros ou Prejuízos Acumulados': {
-        'keywords': ['lucro acumulado', 'prejuizo acumulado', 'prejuízo acumulado', 'resultado acumulado'],
-        'color': '#BA68C8',
-        'icon': '📊',
-        'type': 'equity',
-        'code': '3.2'
+        'type': 'revenue',
+        'dre_account': 'Receita Bruta de Vendas',
+        'group': 'Vendas Avulso com Markup'
     },
 
-    # ========== 4 - RECEITAS (somente o que é DA WIZTOUR) ==========
-    # ❌ NUNCA lançar valor de fornecedor aqui
-    '4 | Receitas': {
-        'keywords': ['receita'],
+    # ========== RECEITAS - COMISSÕES RECEBIDAS ==========
+    'Comissões - Consolidadora Confiança': {
+        'keywords': ['comissao confianca', 'comissão confiança', 'confianca'],
         'color': '#2196F3',
-        'icon': '💵',
+        'icon': '🤝',
         'type': 'revenue',
-        'code': '4'
+        'dre_account': 'Outras Receitas',
+        'group': 'Comissões Recebidas'
     },
-    '4.1 | Receita Operacional': {
-        'keywords': ['receita operacional'],
+    'Comissões - Portal JustTravel': {
+        'keywords': ['justtravel', 'just travel', 'comissao portal'],
         'color': '#42A5F5',
-        'icon': '💼',
+        'icon': '🌐',
         'type': 'revenue',
-        'code': '4.1'
+        'dre_account': 'Outras Receitas',
+        'group': 'Comissões Recebidas'
     },
-    '4.1.1 | Comissão de Intercâmbios': {
-        'keywords': ['comissao intercambio', 'comissão intercâmbio', 'intercambio', 'cambio', 'remessa'],
+    'Comissões - Outras Consolidadoras': {
+        'keywords': ['comissao consolidadora', 'comissão consolidadora'],
         'color': '#64B5F6',
-        'icon': '💱',
+        'icon': '🏢',
         'type': 'revenue',
-        'code': '4.1.1'
+        'dre_account': 'Outras Receitas',
+        'group': 'Comissões Recebidas'
     },
-    '4.1.2 | Margem de Pacotes de Viagem': {
-        'keywords': ['margem pacote', 'markup', 'lucro pacote', 'margem viagem'],
+    'Comissões - Fornecedores Diretos': {
+        'keywords': ['comissao fornecedor', 'comissão direta', 'bonus fornecedor'],
         'color': '#90CAF9',
         'icon': '✈️',
         'type': 'revenue',
-        'code': '4.1.2'
-    },
-    '4.1.3 | Taxas de Serviço': {
-        'keywords': ['taxa servico', 'taxa serviço', 'fee', 'taxa administrativa', 'servico prestado'],
-        'color': '#BBDEFB',
-        'icon': '🔧',
-        'type': 'revenue',
-        'code': '4.1.3'
+        'dre_account': 'Outras Receitas',
+        'group': 'Comissões Recebidas'
     },
 
-    # ========== 5 - DESPESAS OPERACIONAIS ==========
-    '5 | Despesas': {
-        'keywords': ['despesa'],
-        'color': '#F44336',
-        'icon': '💸',
-        'type': 'expense',
-        'code': '5'
+    # ========== RECEITAS FINANCEIRAS ==========
+    'Rendimentos de Aplicações': {
+        'keywords': ['rendimento', 'aplicacao', 'aplicação', 'cdb', 'renda fixa'],
+        'color': '#7E57C2',
+        'icon': '📈',
+        'type': 'revenue',
+        'dre_account': 'Receitas Financeiras',
+        'group': 'Receitas Financeiras'
     },
-    '5.1 | Despesas Operacionais': {
-        'keywords': ['despesa operacional'],
+    'Juros Recebidos': {
+        'keywords': ['juros recebido', 'juros ativo', 'correcao monetaria'],
+        'color': '#9575CD',
+        'icon': '💹',
+        'type': 'revenue',
+        'dre_account': 'Receitas Financeiras',
+        'group': 'Receitas Financeiras'
+    },
+    'Ganhos com Variação Cambial': {
+        'keywords': ['ganho cambial', 'variacao cambial positiva', 'lucro cambio'],
+        'color': '#B39DDB',
+        'icon': '💱',
+        'type': 'revenue',
+        'dre_account': 'Receitas Financeiras',
+        'group': 'Receitas Financeiras'
+    },
+
+    # ========== RECEITAS - OUTRAS ENTRADAS ==========
+    'Reembolso de Despesas': {
+        'keywords': ['reembolso', 'ressarcimento', 'devolucao despesa'],
+        'color': '#80CBC4',
+        'icon': '↩️',
+        'type': 'revenue',
+        'dre_account': 'Outras Receitas',
+        'group': 'Outras Entradas'
+    },
+    'Empréstimos Bancários': {
+        'keywords': ['emprestimo', 'empréstimo', 'financiamento recebido'],
+        'color': '#4DB6AC',
+        'icon': '🏦',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Outras Entradas'
+    },
+    'Venda de Ativos': {
+        'keywords': ['venda ativo', 'venda equipamento', 'alienacao'],
+        'color': '#26A69A',
+        'icon': '🖥️',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Outras Entradas'
+    },
+
+    # ========== RECEITAS - DEVOLUÇÕES ==========
+    'Devoluções de Compra de Ativo': {
+        'keywords': ['devolucao ativo', 'devolução compra'],
+        'color': '#80DEEA',
+        'icon': '🔙',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Devoluções'
+    },
+    'Devoluções de Compra de Serviços': {
+        'keywords': ['devolucao servico', 'devolução serviço', 'estorno fornecedor'],
+        'color': '#4DD0E1',
+        'icon': '↪️',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Devoluções'
+    },
+
+    # ========== RECEITAS - ADIANTAMENTOS ==========
+    'Adiantamentos - Pacotes Futuros': {
+        'keywords': ['adiantamento cliente', 'antecipacao', 'sinal', 'entrada pacote'],
+        'color': '#FFA726',
+        'icon': '💳',
+        'type': 'liability',
+        'dre_account': None,
+        'group': 'Adiantamentos de Clientes'
+    },
+
+    # ========== DESPESAS - DESPESAS DIRETAS (CUSTO) ==========
+    'Fornecedores - Escolas/Acomodações USA': {
+        'keywords': ['escola usa', 'acomodacao usa', 'homestay', 'residencia estudantil'],
         'color': '#EF5350',
-        'icon': '📊',
+        'icon': '🏫',
         'type': 'expense',
-        'code': '5.1'
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
     },
-    '5.1.1 | Marketing e Publicidade': {
-        'keywords': ['marketing', 'publicidade', 'propaganda', 'anuncio', 'facebook ads', 'google ads', 'instagram'],
+    'Compra de Serviços': {
+        'keywords': ['compra servico', 'servico terceiro'],
         'color': '#E57373',
-        'icon': '📢',
+        'icon': '🛒',
         'type': 'expense',
-        'code': '5.1.1'
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
     },
-    '5.1.2 | Comissões de Vendas': {
-        'keywords': ['comissao venda', 'comissão venda', 'comissao vendedor', 'comissão vendedor', 'bonus venda'],
+    'Fornecedores - Passagens Aéreas': {
+        'keywords': ['passagem aerea', 'passagem aérea', 'bilhete aereo', 'cia aerea', 'latam', 'gol', 'azul'],
         'color': '#EF9A9A',
+        'icon': '✈️',
+        'type': 'expense',
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
+    },
+    'Fornecedores - Seguros Viagem': {
+        'keywords': ['seguro viagem', 'assist card', 'travel ace', 'coris'],
+        'color': '#FFCDD2',
+        'icon': '🛡️',
+        'type': 'expense',
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
+    },
+    'Fornecedores - Ingressos Parques': {
+        'keywords': ['ingresso', 'ticket', 'disney', 'universal', 'parque'],
+        'color': '#FF8A80',
+        'icon': '🎢',
+        'type': 'expense',
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
+    },
+    'Fornecedores - Transfers USA': {
+        'keywords': ['transfer', 'transporte', 'shuttle', 'uber'],
+        'color': '#FF5252',
+        'icon': '🚐',
+        'type': 'expense',
+        'dre_account': 'Custo dos Serviços Prestados',
+        'group': 'Despesas Diretas'
+    },
+
+    # ========== DESPESAS - MARKETING E COMERCIAL ==========
+    'Despesas de Viagens': {
+        'keywords': ['viagem comercial', 'hospedagem', 'passagem trabalho'],
+        'color': '#AB47BC',
+        'icon': '✈️',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+    'Google Ads': {
+        'keywords': ['google ads', 'adwords', 'google advertising'],
+        'color': '#BA68C8',
+        'icon': '🔍',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+    'Facebook/Instagram Ads': {
+        'keywords': ['facebook ads', 'instagram ads', 'meta ads', 'facebook advertising'],
+        'color': '#CE93D8',
+        'icon': '📱',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+    'Material Promocional': {
+        'keywords': ['material promocional', 'brochure', 'folder', 'catalogo'],
+        'color': '#E1BEE7',
+        'icon': '📰',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+    'Eventos e Feiras': {
+        'keywords': ['evento', 'feira', 'congresso', 'stand'],
+        'color': '#F3E5F5',
+        'icon': '🎪',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+    'Brindes e presentes': {
+        'keywords': ['brinde', 'presente', 'cortesia'],
+        'color': '#D1C4E9',
+        'icon': '🎁',
+        'type': 'expense',
+        'dre_account': 'Despesas de Vendas e Marketing',
+        'group': 'Despesas de Marketing e Comercial'
+    },
+
+    # ========== DESPESAS - PESSOAL ==========
+    'Salários': {
+        'keywords': ['salario', 'salário', 'vencimento', 'remuneracao'],
+        'color': '#5C6BC0',
         'icon': '💼',
         'type': 'expense',
-        'code': '5.1.2'
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
     },
-    '5.1.3 | Sistemas e Softwares': {
-        'keywords': ['sistema', 'software', 'saas', 'tecnologia', 'crm', 'erp', 'assinatura'],
-        'color': '#FFCDD2',
-        'icon': '💻',
+    'Adiantamento': {
+        'keywords': ['adiantamento', 'adiantamento salarial', 'vale'],
+        'color': '#7986CB',
+        'icon': '💵',
         'type': 'expense',
-        'code': '5.1.3'
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
     },
-    '5.1.4 | Honorários Contábeis': {
-        'keywords': ['contador', 'contabilidade', 'honorario contabil', 'honorário contábil', 'escritorio contabil'],
-        'color': '#E1BEE7',
-        'icon': '📊',
+    'Rescisões': {
+        'keywords': ['rescisao', 'rescisão', 'demissao', 'demissão'],
+        'color': '#9FA8DA',
+        'icon': '📋',
         'type': 'expense',
-        'code': '5.1.4'
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
     },
-    '5.1.5 | Taxas Bancárias': {
-        'keywords': ['taxa bancaria', 'taxa bancária', 'tarifa banco', 'ted', 'doc', 'boleto'],
-        'color': '#CE93D8',
+    'Férias': {
+        'keywords': ['ferias', 'férias'],
+        'color': '#C5CAE9',
+        'icon': '🏖️',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    '13º Salário': {
+        'keywords': ['13 salario', '13º salário', 'decimo terceiro'],
+        'color': '#E8EAF6',
+        'icon': '🎁',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'INSS': {
+        'keywords': ['inss', 'previdencia', 'previdência'],
+        'color': '#3F51B5',
+        'icon': '🏛️',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'FGTS': {
+        'keywords': ['fgts', 'fundo garantia'],
+        'color': '#536DFE',
         'icon': '🏦',
         'type': 'expense',
-        'code': '5.1.5'
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
     },
-    '5.1.6 | Despesas Administrativas': {
-        'keywords': ['despesa administrativa', 'administracao', 'administração', 'aluguel', 'energia', 'internet', 'telefone'],
-        'color': '#BA68C8',
+    'IRRF': {
+        'keywords': ['irrf', 'ir fonte', 'imposto renda retido'],
+        'color': '#304FFE',
+        'icon': '📊',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'Assistência Médica': {
+        'keywords': ['plano saude', 'plano de saúde', 'assistencia medica', 'unimed'],
+        'color': '#448AFF',
+        'icon': '⚕️',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'Seguro de Vida': {
+        'keywords': ['seguro vida'],
+        'color': '#82B1FF',
+        'icon': '🛡️',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'Outros Benefícios': {
+        'keywords': ['beneficio', 'benefício', 'vale alimentacao', 'vale transporte', 'vr', 'vt'],
+        'color': '#B3D9FF',
+        'icon': '🎫',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'Prestadores de Serviço - PJ': {
+        'keywords': ['prestador servico', 'pj', 'autonomo', 'autônomo'],
+        'color': '#1976D2',
+        'icon': '👔',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+    'Pró-Labore': {
+        'keywords': ['pro labore', 'pró-labore', 'retirada socio', 'retirada sócio'],
+        'color': '#1565C0',
+        'icon': '👨‍💼',
+        'type': 'expense',
+        'dre_account': 'Despesas com Pessoal',
+        'group': 'Despesas com Pessoal'
+    },
+
+    # ========== DESPESAS - ADMINISTRATIVAS ==========
+    'Telefonia': {
+        'keywords': ['telefone', 'celular', 'telefonia', 'tim', 'vivo', 'claro'],
+        'color': '#00897B',
+        'icon': '📞',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Despesas Administrativas'
+    },
+    'Material de Escritório': {
+        'keywords': ['material escritorio', 'material escritório', 'papelaria'],
+        'color': '#26A69A',
+        'icon': '✏️',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Despesas Administrativas'
+    },
+    'Seguros': {
+        'keywords': ['seguro', 'apolice', 'apólice'],
+        'color': '#4DB6AC',
+        'icon': '🛡️',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Despesas Administrativas'
+    },
+    'Contabilidade': {
+        'keywords': ['contabilidade', 'contador', 'escritorio contabil'],
+        'color': '#80CBC4',
+        'icon': '📊',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Despesas Administrativas'
+    },
+    'Advogados': {
+        'keywords': ['advogado', 'juridico', 'jurídico', 'honorario advocaticio'],
+        'color': '#B2DFDB',
+        'icon': '⚖️',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Despesas Administrativas'
+    },
+
+    # ========== DESPESAS - TECNOLOGIA E SISTEMAS ==========
+    'Software - Gestão de Website': {
+        'keywords': ['website', 'site', 'dominio', 'hospedagem', 'wordpress'],
+        'color': '#FF6F00',
+        'icon': '🌐',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Tecnologia e Sistemas'
+    },
+    'Software - CRM e gestão': {
+        'keywords': ['crm', 'salesforce', 'pipedrive', 'hubspot'],
+        'color': '#FF8F00',
+        'icon': '👥',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Tecnologia e Sistemas'
+    },
+    'Software - ERP e gestão financeira': {
+        'keywords': ['erp', 'gestao financeira', 'gestão financeira', 'omie', 'bling'],
+        'color': '#FFA000',
+        'icon': '💼',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Tecnologia e Sistemas'
+    },
+    'Software - Google Workspace e gestão de rotinas': {
+        'keywords': ['google workspace', 'g suite', 'gmail', 'drive'],
+        'color': '#FFB300',
+        'icon': '📧',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Tecnologia e Sistemas'
+    },
+    'Software - Outros': {
+        'keywords': ['software', 'assinatura', 'saas'],
+        'color': '#FFC107',
+        'icon': '💻',
+        'type': 'expense',
+        'dre_account': 'Despesas Administrativas',
+        'group': 'Tecnologia e Sistemas'
+    },
+
+    # ========== DESPESAS FINANCEIRAS / BANCOS ==========
+    'Juros sobre Empréstimos': {
+        'keywords': ['juros emprestimo', 'juros empréstimo', 'encargo financeiro'],
+        'color': '#D32F2F',
+        'icon': '📉',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'Multas': {
+        'keywords': ['multa', 'penalidade'],
+        'color': '#E64A19',
+        'icon': '⚠️',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'Pagamento de Empréstimos': {
+        'keywords': ['pagamento emprestimo', 'pagamento empréstimo', 'amortizacao'],
+        'color': '#F57C00',
+        'icon': '💳',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'Tarifas Bancárias': {
+        'keywords': ['tarifa bancaria', 'tarifa bancária', 'taxa banco', 'ted', 'doc'],
+        'color': '#FFA000',
+        'icon': '🏦',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'IOF': {
+        'keywords': ['iof', 'imposto operacao financeira'],
+        'color': '#FBC02D',
+        'icon': '📊',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'Spread Cambial': {
+        'keywords': ['spread cambial', 'variacao cambial negativa', 'perda cambio'],
+        'color': '#F9A825',
+        'icon': '💱',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+    'Taxas Gateway Pagamento': {
+        'keywords': ['gateway', 'pagseguro', 'mercado pago', 'paypal', 'stripe'],
+        'color': '#F57F17',
+        'icon': '💳',
+        'type': 'expense',
+        'dre_account': 'Despesas Financeiras',
+        'group': 'Despesas Financeiras / Bancos'
+    },
+
+    # ========== IMPOSTOS E TAXAS ==========
+    'Simples Nacional (DAS)': {
+        'keywords': ['simples nacional', 'das', 'imposto simples'],
+        'color': '#C62828',
+        'icon': '🏛️',
+        'type': 'expense',
+        'dre_account': 'Impostos',
+        'group': 'Impostos e Taxas'
+    },
+    'Taxas Municipais/Alvará': {
+        'keywords': ['taxa municipal', 'alvara', 'alvará', 'iss'],
+        'color': '#AD1457',
         'icon': '🏢',
         'type': 'expense',
-        'code': '5.1.6'
+        'dre_account': 'Outros Tributos',
+        'group': 'Impostos e Taxas'
+    },
+
+    # ========== COMISSÕES PAGAS ==========
+    'Comissões Pagas - Escolas Parceiras': {
+        'keywords': ['comissao escola', 'comissão escola', 'comissao parceiro'],
+        'color': '#6A1B9A',
+        'icon': '🎓',
+        'type': 'expense',
+        'dre_account': 'Despesas Variáveis',
+        'group': 'Comissões Pagas'
+    },
+    'Comissões Pagas - Indicações': {
+        'keywords': ['comissao indicacao', 'comissão indicação', 'comissao parceiro'],
+        'color': '#8E24AA',
+        'icon': '🤝',
+        'type': 'expense',
+        'dre_account': 'Despesas Variáveis',
+        'group': 'Comissões Pagas'
+    },
+    'Bonificações - Acompanhante de grupo': {
+        'keywords': ['acompanhante', 'lider grupo', 'líder grupo', 'group leader'],
+        'color': '#AB47BC',
+        'icon': '👨‍✈️',
+        'type': 'expense',
+        'dre_account': 'Despesas Variáveis',
+        'group': 'Comissões Pagas'
+    },
+    'Outras bonificações': {
+        'keywords': ['bonificacao', 'bonificação', 'bonus', 'bônus'],
+        'color': '#BA68C8',
+        'icon': '🎁',
+        'type': 'expense',
+        'dre_account': 'Despesas Variáveis',
+        'group': 'Comissões Pagas'
+    },
+
+    # ========== DEVOLUÇÕES DE VENDAS ==========
+    'Devoluções de Vendas de Serviços Prestados': {
+        'keywords': ['devolucao venda', 'devolução venda', 'cancelamento', 'estorno cliente'],
+        'color': '#FF5252',
+        'icon': '↩️',
+        'type': 'expense',
+        'dre_account': 'Deduções de Receita',
+        'group': 'Devoluções de Vendas'
+    },
+
+    # ========== INVESTIMENTOS ==========
+    'Máquinas e Equipamentos': {
+        'keywords': ['maquina', 'máquina', 'equipamento'],
+        'color': '#546E7A',
+        'icon': '⚙️',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Investimento'
+    },
+    'Equipamentos de Informática': {
+        'keywords': ['computador', 'notebook', 'impressora', 'monitor'],
+        'color': '#607D8B',
+        'icon': '💻',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Investimento'
+    },
+    'Comunicação': {
+        'keywords': ['equipamento comunicacao', 'equipamento comunicação'],
+        'color': '#78909C',
+        'icon': '📡',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Investimento'
+    },
+
+    # ========== OUTRAS DESPESAS ==========
+    'Adiantamento a Fornecedores': {
+        'keywords': ['adiantamento fornecedor', 'antecipacao fornecedor'],
+        'color': '#90A4AE',
+        'icon': '💸',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Outras Despesas'
+    },
+    'Distribuição de Lucros - Retirada': {
+        'keywords': ['distribuicao lucro', 'distribuição lucro', 'dividendo', 'retirada lucro'],
+        'color': '#B0BEC5',
+        'icon': '💰',
+        'type': 'other',
+        'dre_account': None,
+        'group': 'Outras Despesas'
     },
 
     'Uncategorized': {
@@ -579,8 +990,11 @@ CATEGORIES_TRAVEL_AGENCY = {
         'color': '#607D8B',
         'icon': '❓',
         'type': 'uncategorized',
-        'code': '0000'
+        'dre_account': None,
+        'group': 'Sem Categoria'
     }
+}
+
 }
 
 # Category presets
