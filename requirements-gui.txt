@@ -10,9 +10,8 @@ openpyxl>=3.0.0
 PyQt5>=5.15.0
 PyQt5-sip>=12.0.0
 
-# Plotly for interactive charts
-plotly>=5.18.0
-kaleido>=0.2.1  # For static image export from plotly
+# Matplotlib for charts (offline, no firewall issues)
+matplotlib>=3.7.0
 
 # PDF generation
 fpdf2>=2.7.0
