@@ -1,28 +1,31 @@
 """
-Charts Tab - Interactive visualizations with Plotly
+Charts Tab - Static visualizations with Matplotlib
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                             QFrame, QScrollArea, QComboBox, QPushButton,
-                             QGridLayout)
-from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineSettings
+                             QFrame, QScrollArea, QComboBox, QPushButton)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap
 import sys
 import os
 import pandas as pd
+import io
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-    PLOTLY_AVAILABLE = True
+    import matplotlib
+    matplotlib.use('Agg')  # Non-interactive backend
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+    import matplotlib.dates as mdates
+    MATPLOTLIB_AVAILABLE = True
 except ImportError:
-    PLOTLY_AVAILABLE = False
+    MATPLOTLIB_AVAILABLE = False
 
 
 class ChartWidget(QFrame):
-    """Widget to display a Plotly chart"""
+    """Widget to display a Matplotlib chart as an image"""
 
     def __init__(self, title=""):
         super().__init__()
@@ -48,67 +51,41 @@ class ChartWidget(QFrame):
             title_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #212121; background: transparent;")
             layout.addWidget(title_label)
 
-        # Web view for Plotly
-        self.web_view = QWebEngineView()
-        self.web_view.setMinimumHeight(350)
+        # Image label for displaying chart
+        self.image_label = QLabel()
+        self.image_label.setMinimumHeight(350)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setStyleSheet("background: transparent;")
+        self.image_label.setScaledContents(False)
 
-        # Configure settings for Plotly to work properly
-        settings = self.web_view.settings()
-        settings.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
-        settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
-        settings.setAttribute(QWebEngineSettings.ErrorPageEnabled, True)
-        settings.setAttribute(QWebEngineSettings.PluginsEnabled, True)
-        settings.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
-        settings.setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, False)
-
-        # Add load finished handler for debugging
-        self.web_view.loadFinished.connect(self.on_load_finished)
-
-        layout.addWidget(self.web_view)
+        layout.addWidget(self.image_label)
 
         self.setLayout(layout)
 
-    def on_load_finished(self, success):
-        """Handle page load completion"""
-        print(f"[CHARTS] WebView load finished for '{self.title}': success={success}")
-        if not success:
-            print(f"[CHARTS] WARNING: Failed to load content for '{self.title}'")
-
     def set_chart(self, fig):
-        """Set Plotly figure to display"""
-        import tempfile
+        """Convert matplotlib figure to QPixmap and display"""
         try:
-            print(f"[CHARTS] set_chart() called for '{self.title}'")
+            # Convert figure to PNG in memory
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=100, bbox_inches='tight', facecolor='white')
+            buf.seek(0)
 
-            # Use CDN version - works better with QWebEngine than embedded
-            html = fig.to_html(
-                include_plotlyjs='cdn',
-                config={
-                    'responsive': True,
-                    'displayModeBar': True,
-                    'displaylogo': False
-                },
-                full_html=True,
-                validate=True
+            # Load into QPixmap
+            pixmap = QPixmap()
+            pixmap.loadFromData(buf.getvalue())
+
+            # Scale to fit while maintaining aspect ratio
+            scaled_pixmap = pixmap.scaled(
+                self.image_label.width(),
+                self.image_label.height(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
             )
 
-            print(f"[CHARTS] HTML generated (using CDN), length: {len(html)} characters")
+            self.image_label.setPixmap(scaled_pixmap)
 
-            # ALTERNATIVE APPROACH: Save to temp file and load via URL
-            # This often works better than setHtml for large HTML content
-            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8')
-            temp_file.write(html)
-            temp_file.close()
-
-            temp_path = temp_file.name
-            print(f"[CHARTS] Temp file created: {temp_path}")
-
-            # Load from file URL
-            file_url = QUrl.fromLocalFile(temp_path)
-            print(f"[CHARTS] Loading from URL: {file_url.toString()}")
-            self.web_view.load(file_url)
-
-            print(f"[CHARTS] Chart '{self.title}' load initiated")
+            # Close the figure to free memory
+            plt.close(fig)
 
         except Exception as e:
             print(f"[CHARTS] ERROR rendering chart '{self.title}': {str(e)}")
@@ -118,21 +95,12 @@ class ChartWidget(QFrame):
 
     def show_message(self, message):
         """Show a message instead of chart"""
-        html = f"""
-        <html>
-        <body style="display: flex; align-items: center; justify-content: center; height: 100%; margin: 0; font-family: Arial;">
-            <div style="text-align: center; color: #757575;">
-                <div style="font-size: 48px; margin-bottom: 10px;">📊</div>
-                <div style="font-size: 14px;">{message}</div>
-            </div>
-        </body>
-        </html>
-        """
-        self.web_view.setHtml(html)
+        self.image_label.setText(f"📊\n{message}")
+        self.image_label.setStyleSheet("color: #757575; font-size: 14px; background: transparent;")
 
 
 class ChartsTab(QWidget):
-    """Charts tab with Plotly visualizations"""
+    """Charts tab with Matplotlib visualizations"""
 
     def __init__(self):
         super().__init__()
@@ -157,10 +125,10 @@ class ChartsTab(QWidget):
         header_layout = QVBoxLayout()
         header_layout.setContentsMargins(15, 10, 15, 10)
 
-        title = QLabel("📈 Gráficos Interativos")
+        title = QLabel("📈 Gráficos")
         title.setStyleSheet("color: white; font-size: 16px; font-weight: bold; background: transparent;")
 
-        subtitle = QLabel("Visualizações dinâmicas dos seus dados financeiros")
+        subtitle = QLabel("Visualizações dos seus dados financeiros")
         subtitle.setStyleSheet("color: #B2DFDB; font-size: 10px; background: transparent;")
 
         header_layout.addWidget(title)
@@ -168,9 +136,9 @@ class ChartsTab(QWidget):
         header_frame.setLayout(header_layout)
         main_layout.addWidget(header_frame)
 
-        # Check if Plotly is available
-        if not PLOTLY_AVAILABLE:
-            error_label = QLabel("⚠️ Plotly não instalado. Execute: pip install plotly")
+        # Check if Matplotlib is available
+        if not MATPLOTLIB_AVAILABLE:
+            error_label = QLabel("⚠️ Matplotlib não instalado. Execute: pip install matplotlib")
             error_label.setStyleSheet("color: #F44336; font-size: 12px; padding: 20px;")
             error_label.setAlignment(Qt.AlignCenter)
             main_layout.addWidget(error_label)
@@ -277,16 +245,11 @@ class ChartsTab(QWidget):
 
     def update_data(self, df):
         """Update charts with new data"""
-        print(f"[CHARTS] update_data() called - df is None: {df is None}, df empty: {df.empty if df is not None else 'N/A'}")
-
         self.df = df
 
         if df is None or df.empty:
-            print("[CHARTS] No data available, showing placeholder")
             self.show_placeholder()
             return
-
-        print(f"[CHARTS] Data received: {len(df)} rows, columns: {df.columns.tolist()}")
 
         # Generate all charts
         self.generate_charts()
@@ -300,31 +263,20 @@ class ChartsTab(QWidget):
 
     def generate_charts(self):
         """Generate all chart visualizations"""
-        print("[CHARTS] generate_charts() called")
-
         if self.df is None or self.df.empty:
-            print("[CHARTS] No data to generate charts")
             return
 
-        print("[CHARTS] Generating all charts...")
-
         # 1. Timeline chart
-        print("[CHARTS] Generating timeline chart...")
         self.generate_timeline_chart()
 
         # 2. Categories pie chart
-        print("[CHARTS] Generating categories chart...")
         self.generate_categories_chart()
 
         # 3. Banks comparison
-        print("[CHARTS] Generating banks chart...")
         self.generate_banks_chart()
 
         # 4. Monthly evolution
-        print("[CHARTS] Generating monthly chart...")
         self.generate_monthly_chart()
-
-        print("[CHARTS] All charts generated successfully")
 
     def generate_timeline_chart(self):
         """Generate timeline evolution chart"""
@@ -343,54 +295,43 @@ class ChartsTab(QWidget):
 
             # Group by date
             df['date_only'] = df['data_dt'].dt.date
-            daily = df.groupby('date_only').agg({
-                'valor': lambda x: x[x > 0].sum() if (x > 0).any() else 0
-            }).reset_index()
-            daily.columns = ['date', 'credits']
+            daily_credits = df[df['valor'] > 0].groupby('date_only')['valor'].sum()
+            daily_debits = df[df['valor'] < 0].groupby('date_only')['valor'].sum().abs()
 
-            daily['debits'] = df.groupby('date_only').agg({
-                'valor': lambda x: abs(x[x < 0].sum()) if (x < 0).any() else 0
-            }).values
+            # Get all dates
+            all_dates = sorted(df['date_only'].unique())
+            credits = [daily_credits.get(d, 0) for d in all_dates]
+            debits = [daily_debits.get(d, 0) for d in all_dates]
 
             # Create figure
-            fig = go.Figure()
+            fig, ax = plt.subplots(figsize=(12, 5))
 
-            fig.add_trace(go.Scatter(
-                x=daily['date'],
-                y=daily['credits'],
-                mode='lines+markers',
-                name='Receitas',
-                line=dict(color='#4CAF50', width=2),
-                marker=dict(size=6),
-                fill='tozeroy',
-                fillcolor='rgba(76, 175, 80, 0.1)'
-            ))
+            ax.plot(all_dates, credits, color='#4CAF50', linewidth=2, marker='o',
+                   markersize=4, label='Receitas', alpha=0.8)
+            ax.fill_between(all_dates, credits, alpha=0.2, color='#4CAF50')
 
-            fig.add_trace(go.Scatter(
-                x=daily['date'],
-                y=daily['debits'],
-                mode='lines+markers',
-                name='Despesas',
-                line=dict(color='#F44336', width=2),
-                marker=dict(size=6),
-                fill='tozeroy',
-                fillcolor='rgba(244, 67, 54, 0.1)'
-            ))
+            ax.plot(all_dates, debits, color='#F44336', linewidth=2, marker='o',
+                   markersize=4, label='Despesas', alpha=0.8)
+            ax.fill_between(all_dates, debits, alpha=0.2, color='#F44336')
 
-            fig.update_layout(
-                hovermode='x unified',
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(size=10),
-                margin=dict(l=50, r=20, t=20, b=50),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(showgrid=True, gridcolor='#F0F0F0'),
-                yaxis=dict(showgrid=True, gridcolor='#F0F0F0', title='Valor (R$)')
-            )
+            ax.set_xlabel('Data', fontsize=10)
+            ax.set_ylabel('Valor (R$)', fontsize=10)
+            ax.legend(loc='upper left', fontsize=9)
+            ax.grid(True, alpha=0.3, linestyle='--')
+            ax.tick_params(labelsize=9)
+
+            # Format x-axis dates
+            if len(all_dates) > 20:
+                ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+            ax.tick_params(axis='x', rotation=45)
+
+            fig.tight_layout()
 
             self.chart_timeline.set_chart(fig)
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.chart_timeline.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_categories_chart(self):
@@ -412,26 +353,41 @@ class ChartsTab(QWidget):
                 self.chart_categories.show_message("Sem despesas categorizadas")
                 return
 
-            # Create pie chart
-            fig = go.Figure(data=[go.Pie(
-                labels=cat_summary.index,
-                values=cat_summary.values,
-                hole=0.4,
-                marker=dict(line=dict(color='white', width=2))
-            )])
+            # Limit to top 10 categories, group rest as "Outros"
+            if len(cat_summary) > 10:
+                top_10 = cat_summary.head(10)
+                outros = cat_summary.iloc[10:].sum()
+                cat_summary = pd.concat([top_10, pd.Series({'Outros': outros})])
 
-            fig.update_layout(
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(size=10),
-                margin=dict(l=20, r=20, t=20, b=20),
-                showlegend=True,
-                legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.05)
+            # Create figure
+            fig, ax = plt.subplots(figsize=(10, 6))
+
+            # Generate colors
+            colors = plt.cm.Set3(range(len(cat_summary)))
+
+            wedges, texts, autotexts = ax.pie(
+                cat_summary.values,
+                labels=cat_summary.index,
+                autopct='%1.1f%%',
+                startangle=90,
+                colors=colors,
+                textprops={'fontsize': 9}
             )
+
+            # Make percentage text bold
+            for autotext in autotexts:
+                autotext.set_color('white')
+                autotext.set_weight('bold')
+                autotext.set_fontsize(8)
+
+            ax.axis('equal')
+            fig.tight_layout()
 
             self.chart_categories.set_chart(fig)
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.chart_categories.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_banks_chart(self):
@@ -440,53 +396,38 @@ class ChartsTab(QWidget):
             df = self.df.copy()
 
             # Group by bank
-            banks_summary = df.groupby('banco').agg({
-                'valor': ['count', 'sum']
-            }).reset_index()
-            banks_summary.columns = ['banco', 'transacoes', 'total']
-
-            # Separate credits and debits
             banks_credits = df[df['valor'] > 0].groupby('banco')['valor'].sum()
             banks_debits = df[df['valor'] < 0].groupby('banco')['valor'].sum().abs()
 
-            banks_summary['creditos'] = banks_summary['banco'].map(banks_credits).fillna(0)
-            banks_summary['debitos'] = banks_summary['banco'].map(banks_debits).fillna(0)
+            # Get all banks
+            all_banks = sorted(set(banks_credits.index) | set(banks_debits.index))
 
-            banks_summary = banks_summary.sort_values('transacoes', ascending=True)
+            credits = [banks_credits.get(b, 0) for b in all_banks]
+            debits = [banks_debits.get(b, 0) for b in all_banks]
 
             # Create figure
-            fig = go.Figure()
+            fig, ax = plt.subplots(figsize=(10, 6))
 
-            fig.add_trace(go.Bar(
-                y=banks_summary['banco'],
-                x=banks_summary['creditos'],
-                name='Receitas',
-                orientation='h',
-                marker=dict(color='#4CAF50')
-            ))
+            x = range(len(all_banks))
+            width = 0.35
 
-            fig.add_trace(go.Bar(
-                y=banks_summary['banco'],
-                x=banks_summary['debitos'],
-                name='Despesas',
-                orientation='h',
-                marker=dict(color='#F44336')
-            ))
+            ax.barh([i - width/2 for i in x], credits, width, label='Receitas', color='#4CAF50', alpha=0.8)
+            ax.barh([i + width/2 for i in x], debits, width, label='Despesas', color='#F44336', alpha=0.8)
 
-            fig.update_layout(
-                barmode='group',
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(size=10),
-                margin=dict(l=150, r=20, t=20, b=50),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(showgrid=True, gridcolor='#F0F0F0', title='Valor (R$)'),
-                yaxis=dict(showgrid=False)
-            )
+            ax.set_yticks(x)
+            ax.set_yticklabels(all_banks, fontsize=9)
+            ax.set_xlabel('Valor (R$)', fontsize=10)
+            ax.legend(loc='best', fontsize=9)
+            ax.grid(True, alpha=0.3, axis='x', linestyle='--')
+            ax.tick_params(labelsize=9)
+
+            fig.tight_layout()
 
             self.chart_banks.set_chart(fig)
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.chart_banks.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def generate_monthly_chart(self):
@@ -507,65 +448,59 @@ class ChartsTab(QWidget):
             # Group by month
             df['year_month'] = df['data_dt'].dt.to_period('M')
 
-            monthly = df.groupby('year_month').agg({
-                'valor': 'sum'
-            }).reset_index()
-            monthly.columns = ['month', 'balance']
+            monthly_credits = df[df['valor'] > 0].groupby('year_month')['valor'].sum()
+            monthly_debits = df[df['valor'] < 0].groupby('year_month')['valor'].sum().abs()
+            monthly_balance = df.groupby('year_month')['valor'].sum()
 
-            monthly['credits'] = df[df['valor'] > 0].groupby(df['data_dt'].dt.to_period('M'))['valor'].sum().values
-            monthly['debits'] = df[df['valor'] < 0].groupby(df['data_dt'].dt.to_period('M'))['valor'].sum().abs().values
+            # Get all months
+            all_months = sorted(set(monthly_credits.index) | set(monthly_debits.index))
+            month_labels = [str(m) for m in all_months]
 
-            monthly['month_str'] = monthly['month'].astype(str)
+            credits = [monthly_credits.get(m, 0) for m in all_months]
+            debits = [monthly_debits.get(m, 0) for m in all_months]
+            balance = [monthly_balance.get(m, 0) for m in all_months]
 
-            # Create figure
-            fig = go.Figure()
+            # Create figure with two y-axes
+            fig, ax1 = plt.subplots(figsize=(12, 6))
 
-            fig.add_trace(go.Bar(
-                x=monthly['month_str'],
-                y=monthly['credits'],
-                name='Receitas',
-                marker=dict(color='#4CAF50')
-            ))
+            x = range(len(all_months))
+            width = 0.35
 
-            fig.add_trace(go.Bar(
-                x=monthly['month_str'],
-                y=monthly['debits'],
-                name='Despesas',
-                marker=dict(color='#F44336')
-            ))
+            # Bars for credits and debits
+            ax1.bar([i - width/2 for i in x], credits, width, label='Receitas', color='#4CAF50', alpha=0.8)
+            ax1.bar([i + width/2 for i in x], debits, width, label='Despesas', color='#F44336', alpha=0.8)
 
-            # Add balance line
-            fig.add_trace(go.Scatter(
-                x=monthly['month_str'],
-                y=monthly['balance'],
-                name='Saldo',
-                mode='lines+markers',
-                line=dict(color='#1976D2', width=3),
-                marker=dict(size=8),
-                yaxis='y2'
-            ))
+            ax1.set_xlabel('Mês', fontsize=10)
+            ax1.set_ylabel('Receitas/Despesas (R$)', fontsize=10, color='black')
+            ax1.tick_params(axis='y', labelcolor='black', labelsize=9)
+            ax1.tick_params(axis='x', rotation=45, labelsize=9)
+            ax1.set_xticks(x)
+            ax1.set_xticklabels(month_labels)
+            ax1.grid(True, alpha=0.3, axis='y', linestyle='--')
 
-            fig.update_layout(
-                barmode='group',
-                plot_bgcolor='white',
-                paper_bgcolor='white',
-                font=dict(size=10),
-                margin=dict(l=50, r=50, t=20, b=80),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis=dict(showgrid=False, tickangle=-45),
-                yaxis=dict(showgrid=True, gridcolor='#F0F0F0', title='Receitas/Despesas (R$)'),
-                yaxis2=dict(showgrid=False, overlaying='y', side='right', title='Saldo (R$)')
-            )
+            # Line for balance on secondary axis
+            ax2 = ax1.twinx()
+            ax2.plot(x, balance, color='#1976D2', linewidth=3, marker='o',
+                    markersize=6, label='Saldo', zorder=10)
+            ax2.set_ylabel('Saldo (R$)', fontsize=10, color='#1976D2')
+            ax2.tick_params(axis='y', labelcolor='#1976D2', labelsize=9)
+
+            # Combine legends
+            lines1, labels1 = ax1.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=9)
+
+            fig.tight_layout()
 
             self.chart_monthly.set_chart(fig)
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.chart_monthly.show_message(f"Erro ao gerar gráfico: {str(e)}")
 
     def update_charts_display(self):
         """Update which charts are displayed based on selection"""
-        print("[CHARTS] update_charts_display() called")
-
         # Clear layout
         for i in reversed(range(self.charts_layout.count())):
             widget = self.charts_layout.itemAt(i).widget()
@@ -573,28 +508,21 @@ class ChartsTab(QWidget):
                 widget.setParent(None)
 
         if self.df is None or self.df.empty:
-            print("[CHARTS] No data, showing placeholder")
             self.show_placeholder()
             return
 
         selected = self.chart_selector.currentData()
-        print(f"[CHARTS] Selected view: {selected}")
 
         if selected == "all" or selected == "timeline":
-            print("[CHARTS] Adding timeline chart to layout")
             self.charts_layout.addWidget(self.chart_timeline)
 
         if selected == "all" or selected == "categories":
-            print("[CHARTS] Adding categories chart to layout")
             self.charts_layout.addWidget(self.chart_categories)
 
         if selected == "all" or selected == "banks":
-            print("[CHARTS] Adding banks chart to layout")
             self.charts_layout.addWidget(self.chart_banks)
 
         if selected == "all" or selected == "monthly":
-            print("[CHARTS] Adding monthly chart to layout")
             self.charts_layout.addWidget(self.chart_monthly)
 
         self.charts_layout.addStretch()
-        print("[CHARTS] Charts display updated")
