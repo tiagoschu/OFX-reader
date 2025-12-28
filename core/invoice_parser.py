@@ -73,12 +73,24 @@ class NFSeParser:
             list: List of invoice dicts (one per row)
         """
         try:
-            # Read CSV - skip first row if it's header
-            df = pd.read_csv(file_path, encoding='utf-8-sig', skipinitialspace=True)
+            # Try multiple encodings (common in Brazilian files)
+            encodings = ['utf-8-sig', 'latin-1', 'cp1252', 'iso-8859-1']
+            df = None
 
-            # Alternative: Try latin-1 if utf-8 fails
-            if df.empty:
-                df = pd.read_csv(file_path, encoding='latin-1', skipinitialspace=True)
+            for encoding in encodings:
+                try:
+                    df = pd.read_csv(file_path, encoding=encoding, skipinitialspace=True)
+                    print(f"[INVOICE] CSV loaded successfully with encoding: {encoding}")
+                    break
+                except UnicodeDecodeError:
+                    continue
+                except Exception as e:
+                    print(f"[INVOICE] Error with encoding {encoding}: {str(e)}")
+                    continue
+
+            if df is None or df.empty:
+                print("[INVOICE] Could not read CSV with any encoding")
+                return None
 
             # Clean column names (remove leading/trailing spaces and quotes)
             df.columns = df.columns.str.strip().str.replace('"', '')
