@@ -520,7 +520,11 @@ class InvoiceMatcher:
         summary['total_pendente'] = summary['total_emitido'] - summary['total_recebido']
         # For agencies: % markup = (nota emitida / valor recebido) * 100
         # Example: R$ 1.000 nota / R$ 10.000 recebido = 10% markup
-        summary['percent_markup'] = (summary['total_emitido'] / summary['total_recebido'] * 100).round(2)
+        # Handle division by zero: if no receipts, markup is 0%
+        summary['percent_markup'] = summary.apply(
+            lambda row: 0.0 if row['total_recebido'] == 0 else round((row['total_emitido'] / row['total_recebido'] * 100), 2),
+            axis=1
+        )
 
         # Sort by pending value
         summary = summary.sort_values('total_pendente', ascending=False)
@@ -558,7 +562,11 @@ class InvoiceMatcher:
         summary['total_pendente'] = summary['total_emitido'] - summary['total_recebido']
         # For agencies: % markup = (nota emitida / valor recebido) * 100
         # Example: R$ 1.000 nota / R$ 10.000 recebido = 10% markup
-        summary['percent_markup'] = (summary['total_emitido'] / summary['total_recebido'] * 100).round(2)
+        # Handle division by zero: if no receipts, markup is 0%
+        summary['percent_markup'] = summary.apply(
+            lambda row: 0.0 if row['total_recebido'] == 0 else round((row['total_emitido'] / row['total_recebido'] * 100), 2),
+            axis=1
+        )
 
         # Convert period to string
         summary['mes'] = summary['mes'].astype(str)

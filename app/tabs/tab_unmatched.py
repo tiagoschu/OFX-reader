@@ -116,6 +116,7 @@ class UnmatchedTab(QWidget):
         self.invoices_table.setAlternatingRowColors(True)
         self.invoices_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.invoices_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.invoices_table.setSortingEnabled(True)  # Enable column sorting
         self.invoices_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: #E0E0E0;
@@ -158,6 +159,7 @@ class UnmatchedTab(QWidget):
         self.ofx_table.setAlternatingRowColors(True)
         self.ofx_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.ofx_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.ofx_table.setSortingEnabled(True)  # Enable column sorting
         self.ofx_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: #E0E0E0;

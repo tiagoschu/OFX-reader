@@ -415,6 +415,10 @@ class InvoiceAnalysisTab(QWidget):
         # Get customer's invoices
         customer_invoices = self.invoices_df[self.invoices_df['cpf_cnpj'] == cpf_cnpj].copy()
 
+        # Sort by date (most recent first)
+        if not customer_invoices.empty and 'data_dt' in customer_invoices.columns:
+            customer_invoices = customer_invoices.sort_values('data_dt', ascending=False)
+
         if not customer_invoices.empty:
             # Add "Notas Fiscais" section header
             invoices_header = QTreeWidgetItem(parent_item)
@@ -450,6 +454,14 @@ class InvoiceAnalysisTab(QWidget):
                 (self.ofx_df['cpf_cnpj'] == cpf_cnpj) &
                 (self.ofx_df['valor'] > 0)
             ].copy()
+
+            # Sort by date (most recent first)
+            if not customer_ofx.empty and 'data_dt' in customer_ofx.columns:
+                customer_ofx = customer_ofx.sort_values('data_dt', ascending=False)
+            elif not customer_ofx.empty and 'data' in customer_ofx.columns:
+                # If data_dt doesn't exist, create it
+                customer_ofx['data_dt'] = pd.to_datetime(customer_ofx['data'], format='%d/%m/%Y', errors='coerce')
+                customer_ofx = customer_ofx.sort_values('data_dt', ascending=False)
 
             if not customer_ofx.empty:
                 # Add "Recebimentos OFX" section header
