@@ -418,7 +418,7 @@ class InvoiceAnalysisTab(QWidget):
         if not customer_invoices.empty:
             # Add "Notas Fiscais" section header
             invoices_header = QTreeWidgetItem(parent_item)
-            invoices_header.setText(0, "📄 NOTAS FISCAIS")
+            invoices_header.setText(0, f"📄 NOTAS FISCAIS ({len(customer_invoices)} notas)")
             invoices_header.setBackground(0, QColor(240, 248, 255))
             font = QFont()
             font.setBold(True)
@@ -444,14 +444,17 @@ class InvoiceAnalysisTab(QWidget):
                     invoice_item.setText(4, "⚠ Pendente")
                     invoice_item.setForeground(4, QColor(200, 100, 0))
 
-        # Get customer's OFX receipts
+        # Get customer's OFX receipts (only credits/receipts, valor > 0)
         if self.ofx_df is not None and not self.ofx_df.empty:
-            customer_ofx = self.ofx_df[self.ofx_df['cpf_cnpj'] == cpf_cnpj].copy()
+            customer_ofx = self.ofx_df[
+                (self.ofx_df['cpf_cnpj'] == cpf_cnpj) &
+                (self.ofx_df['valor'] > 0)
+            ].copy()
 
             if not customer_ofx.empty:
                 # Add "Recebimentos OFX" section header
                 ofx_header = QTreeWidgetItem(parent_item)
-                ofx_header.setText(0, "💰 RECEBIMENTOS OFX")
+                ofx_header.setText(0, f"💰 RECEBIMENTOS OFX ({len(customer_ofx)} transações)")
                 ofx_header.setBackground(0, QColor(240, 255, 240))
                 font = QFont()
                 font.setBold(True)
