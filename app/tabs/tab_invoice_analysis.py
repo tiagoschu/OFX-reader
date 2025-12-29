@@ -429,6 +429,10 @@ class InvoiceAnalysisTab(QWidget):
             font.setBold(True)
             invoices_header.setFont(0, font)
 
+            # DEBUG: Log invoice totals
+            total_invoices = customer_invoices['valor_servicos'].sum()
+            print(f"[DEBUG-CLIENTE] CPF={cpf_cnpj} | Notas: {len(customer_invoices)} | Total Notas: R$ {total_invoices:,.2f}")
+
             # Add each invoice as a child
             for idx, invoice in customer_invoices.iterrows():
                 invoice_item = QTreeWidgetItem(invoices_header)
@@ -451,6 +455,26 @@ class InvoiceAnalysisTab(QWidget):
 
         # Get customer's OFX receipts (only credits/receipts, valor > 0)
         if self.ofx_df is not None and not self.ofx_df.empty:
+            # DEBUG: Check ALL OFX for this customer (before filtering)
+            all_customer_ofx = self.ofx_df[self.ofx_df['cpf_cnpj'] == cpf_cnpj].copy()
+            print(f"[DEBUG-CLIENTE] CPF={cpf_cnpj} | Total OFX (TODAS): {len(all_customer_ofx)}")
+            if not all_customer_ofx.empty:
+                print(f"[DEBUG-CLIENTE]   Créditos: {len(all_customer_ofx[all_customer_ofx['valor'] > 0])}")
+                print(f"[DEBUG-CLIENTE]   Débitos: {len(all_customer_ofx[all_customer_ofx['valor'] <= 0])}")
+                total_creditos = all_customer_ofx[all_customer_ofx['valor'] > 0]['valor'].sum()
+                total_debitos = all_customer_ofx[all_customer_ofx['valor'] <= 0]['valor'].sum()
+                print(f"[DEBUG-CLIENTE]   Soma Créditos: R$ {total_creditos:,.2f}")
+                print(f"[DEBUG-CLIENTE]   Soma Débitos: R$ {total_debitos:,.2f}")
+
+                # List all OFX transactions for this customer
+                print(f"[DEBUG-CLIENTE] Detalhes de TODAS as {len(all_customer_ofx)} transações OFX:")
+                for idx, ofx in all_customer_ofx.iterrows():
+                    valor = ofx.get('valor', 0)
+                    data = ofx.get('data', 'N/A')
+                    desc = ofx.get('descricao', '')[:40]
+                    tipo = "CRÉDITO" if valor > 0 else "DÉBITO"
+                    print(f"[DEBUG-CLIENTE]   {tipo} | {data} | R$ {valor:,.2f} | {desc}")
+
             customer_ofx = self.ofx_df[
                 (self.ofx_df['cpf_cnpj'] == cpf_cnpj) &
                 (self.ofx_df['valor'] > 0)
@@ -465,6 +489,10 @@ class InvoiceAnalysisTab(QWidget):
                 customer_ofx = customer_ofx.sort_values('data_dt', ascending=False)
 
             if not customer_ofx.empty:
+                # DEBUG: Log OFX totals
+                total_ofx = customer_ofx['valor'].sum()
+                print(f"[DEBUG-CLIENTE] CPF={cpf_cnpj} | OFX Mostrados: {len(customer_ofx)} | Total OFX: R$ {total_ofx:,.2f}")
+
                 # Add "Recebimentos OFX" section header
                 ofx_header = QTreeWidgetItem(parent_item)
                 ofx_header.setText(0, f"💰 RECEBIMENTOS OFX ({len(customer_ofx)} transações)")
