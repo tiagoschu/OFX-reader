@@ -128,20 +128,46 @@ class NFSeParser:
                     aliquota_str = aliquota_str.replace('%', '').replace(',', '.').strip()
                     aliquota = float(aliquota_str) if aliquota_str else 0.0
 
-                    # Tomador (format: "CPF-Nome" ou "CPF - Nome")
+                    # Tomador (format: "CPF-Nome" ou "CNPJ-Nome" ou "123.456.789-01-Nome")
                     tomador_str = str(row.get('Tomador', '')).strip()
 
-                    # Extract CPF/CNPJ and name
+                    # Extract CPF/CNPJ and name using regex to get complete document
                     cpf_cnpj = ''
                     nome_tomador = tomador_str
 
-                    if '-' in tomador_str:
-                        parts = tomador_str.split('-', 1)
-                        cpf_cnpj = clean_cpf_cnpj(parts[0].strip())
-                        nome_tomador = parts[1].strip() if len(parts) > 1 else tomador_str
+                    # Try to find CPF (11 digits with formatting)
+                    import re
+                    cpf_pattern = r'\d{3}\.?\d{3}\.?\d{3}-?\d{2}'
+                    cnpj_pattern = r'\d{2}\.?\d{3}\.?\d{3}/?\\d{4}-?\d{2}'
+
+                    # Try CNPJ first (longer)
+                    cnpj_match = re.search(cnpj_pattern, tomador_str)
+                    if cnpj_match:
+                        cpf_cnpj_raw = cnpj_match.group()
+                        cpf_cnpj = clean_cpf_cnpj(cpf_cnpj_raw)
+                        # Remove CPF/CNPJ from name (keep everything after)
+                        nome_tomador = tomador_str[cnpj_match.end():].strip()
+                        # Remove leading dash or space
+                        if nome_tomador.startswith('-') or nome_tomador.startswith(' '):
+                            nome_tomador = nome_tomador[1:].strip()
+                    else:
+                        # Try CPF
+                        cpf_match = re.search(cpf_pattern, tomador_str)
+                        if cpf_match:
+                            cpf_cnpj_raw = cpf_match.group()
+                            cpf_cnpj = clean_cpf_cnpj(cpf_cnpj_raw)
+                            # Remove CPF/CNPJ from name (keep everything after)
+                            nome_tomador = tomador_str[cpf_match.end():].strip()
+                            # Remove leading dash or space
+                            if nome_tomador.startswith('-') or nome_tomador.startswith(' '):
+                                nome_tomador = nome_tomador[1:].strip()
 
                     # Format CPF/CNPJ
                     tipo_doc, cpf_cnpj_formatted, is_valid = identify_and_format(cpf_cnpj)
+
+                    # Debug: Log first few extractions to verify
+                    if idx < 3 and cpf_cnpj:
+                        print(f"[INVOICE] CSV row {idx}: Tomador='{tomador_str}' -> CPF/CNPJ='{cpf_cnpj}' ({len(cpf_cnpj)} digits), Nome='{nome_tomador}'")
 
                     # Other fields
                     retido = str(row.get('Retido', 'Não')).strip()
