@@ -4,7 +4,8 @@ Unmatched Items Tab - Show invoices and OFX transactions without matches
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QLabel, QGroupBox,
-                             QHeaderView, QAbstractItemView, QSplitter, QMessageBox)
+                             QHeaderView, QAbstractItemView, QSplitter, QMessageBox,
+                             QLineEdit)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
 import pandas as pd
@@ -21,6 +22,8 @@ class UnmatchedTab(QWidget):
         self.ofx_df = None
         self.unmatched_invoices = pd.DataFrame()
         self.unmatched_ofx = pd.DataFrame()
+        self.filtered_invoices = pd.DataFrame()  # For search filtering
+        self.filtered_ofx = pd.DataFrame()  # For search filtering
         self.init_ui()
 
     def init_ui(self):
@@ -97,21 +100,42 @@ class UnmatchedTab(QWidget):
         invoices_group = QGroupBox("📄 Notas Fiscais Não Vinculadas")
         invoices_layout = QVBoxLayout()
 
+        # Search box for invoices
+        search_layout = QHBoxLayout()
+        search_label = QLabel("🔍 Buscar:")
+        search_label.setStyleSheet("font-size: 10px; color: #666;")
+        search_layout.addWidget(search_label)
+
+        self.invoice_search = QLineEdit()
+        self.invoice_search.setPlaceholderText("Digite para buscar (número, cliente, CPF/CNPJ)...")
+        self.invoice_search.setStyleSheet("""
+            QLineEdit {
+                padding: 5px;
+                border: 1px solid #E0E0E0;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+        """)
+        self.invoice_search.textChanged.connect(self.filter_invoices)
+        search_layout.addWidget(self.invoice_search)
+
+        invoices_layout.addLayout(search_layout)
+
         self.invoices_table = QTableWidget()
         self.invoices_table.setColumnCount(7)
         self.invoices_table.setHorizontalHeaderLabels([
             'Nº', 'Data', 'Cliente', 'CPF/CNPJ', 'Valor', 'Status', 'Motivo'
         ])
 
-        # Configure table
+        # Configure table - Cliente column gets more space
         header = self.invoices_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Número
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Data
-        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Cliente
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Cliente (expands)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # CPF
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Valor
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Status
-        header.setSectionResizeMode(6, QHeaderView.Stretch)  # Motivo
+        header.setSectionResizeMode(6, QHeaderView.Stretch)  # Motivo (expands)
 
         self.invoices_table.setAlternatingRowColors(True)
         self.invoices_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -141,20 +165,44 @@ class UnmatchedTab(QWidget):
         ofx_group = QGroupBox("💰 Pagamentos Não Vinculados (OFX)")
         ofx_layout = QVBoxLayout()
 
+        # Search box for OFX
+        search_layout = QHBoxLayout()
+        search_label = QLabel("🔍 Buscar:")
+        search_label.setStyleSheet("font-size: 10px; color: #666;")
+        search_layout.addWidget(search_label)
+
+        self.ofx_search = QLineEdit()
+        self.ofx_search.setPlaceholderText("Digite para buscar (descrição, CPF/CNPJ, banco)...")
+        self.ofx_search.setStyleSheet("""
+            QLineEdit {
+                padding: 5px;
+                border: 1px solid #E0E0E0;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+        """)
+        self.ofx_search.textChanged.connect(self.filter_ofx)
+        search_layout.addWidget(self.ofx_search)
+
+        ofx_layout.addLayout(search_layout)
+
         self.ofx_table = QTableWidget()
         self.ofx_table.setColumnCount(6)
         self.ofx_table.setHorizontalHeaderLabels([
             'Data', 'Descrição', 'CPF/CNPJ', 'Valor', 'Banco', 'Conta'
         ])
 
-        # Configure table
+        # Configure table - Descrição gets much more space
         header = self.ofx_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Data
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Descrição
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Descrição (expands - twice as much space)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # CPF
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Valor
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Banco
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Conta
+
+        # Make Descrição column wider by setting minimum width
+        header.setMinimumSectionSize(200)  # Minimum 200px for description
 
         self.ofx_table.setAlternatingRowColors(True)
         self.ofx_table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -281,14 +329,50 @@ class UnmatchedTab(QWidget):
         else:
             self.unmatched_ofx = pd.DataFrame()
 
+        # Initialize filtered data (same as unmatched initially)
+        self.filtered_invoices = self.unmatched_invoices.copy()
+        self.filtered_ofx = self.unmatched_ofx.copy()
+
         # Update tables
         self.update_invoices_table()
         self.update_ofx_table()
         self.update_summary()
 
+    def filter_invoices(self, search_text):
+        """Filter invoices table based on search text"""
+        if not search_text or self.unmatched_invoices.empty:
+            self.filtered_invoices = self.unmatched_invoices.copy()
+        else:
+            search_text = search_text.lower()
+            mask = (
+                self.unmatched_invoices['numero'].astype(str).str.lower().str.contains(search_text, na=False) |
+                self.unmatched_invoices['nome_tomador'].astype(str).str.lower().str.contains(search_text, na=False) |
+                self.unmatched_invoices['cpf_cnpj'].astype(str).str.contains(search_text, na=False) |
+                self.unmatched_invoices.get('cpf_cnpj_formatted', pd.Series([''] * len(self.unmatched_invoices))).astype(str).str.contains(search_text, na=False)
+            )
+            self.filtered_invoices = self.unmatched_invoices[mask].copy()
+
+        self.update_invoices_table()
+
+    def filter_ofx(self, search_text):
+        """Filter OFX table based on search text"""
+        if not search_text or self.unmatched_ofx.empty:
+            self.filtered_ofx = self.unmatched_ofx.copy()
+        else:
+            search_text = search_text.lower()
+            mask = (
+                self.unmatched_ofx.get('descricao', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.lower().str.contains(search_text, na=False) |
+                self.unmatched_ofx.get('cpf_cnpj', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.contains(search_text, na=False) |
+                self.unmatched_ofx.get('banco', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.lower().str.contains(search_text, na=False) |
+                self.unmatched_ofx.get('conta', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.contains(search_text, na=False)
+            )
+            self.filtered_ofx = self.unmatched_ofx[mask].copy()
+
+        self.update_ofx_table()
+
     def update_invoices_table(self):
         """Update unmatched invoices table"""
-        df = self.unmatched_invoices
+        df = self.filtered_invoices  # Use filtered data
 
         if df is None or df.empty:
             self.invoices_table.setRowCount(0)
@@ -331,7 +415,7 @@ class UnmatchedTab(QWidget):
 
     def update_ofx_table(self):
         """Update unmatched OFX transactions table"""
-        df = self.unmatched_ofx
+        df = self.filtered_ofx  # Use filtered data
 
         if df is None or df.empty:
             self.ofx_table.setRowCount(0)
@@ -343,8 +427,9 @@ class UnmatchedTab(QWidget):
             # Data
             self.ofx_table.setItem(row_idx, 0, QTableWidgetItem(row['data']))
 
-            # Descrição
-            descricao = row.get('descricao', row.get('memo', ''))[:50]
+            # Descrição - mostrar mais caracteres (100 em vez de 50)
+            descricao = row.get('descricao', row.get('memo', ''))
+            # Não truncar - deixar a coluna Stretch mostrar tudo
             self.ofx_table.setItem(row_idx, 1, QTableWidgetItem(descricao))
 
             # CPF/CNPJ
