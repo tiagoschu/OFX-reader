@@ -279,12 +279,22 @@ class InvoiceAnalysisTab(QWidget):
 
     def set_data(self, invoices_df, ofx_df):
         """Set data for analysis"""
+        import time
+        start_time = time.time()
+        print(f"[ANALYSIS] set_data iniciado - Invoices: {len(invoices_df) if invoices_df is not None else 0}, OFX: {len(ofx_df) if ofx_df is not None else 0} - {time.strftime('%H:%M:%S')}")
+
         self.invoices_df = invoices_df
         self.ofx_df = ofx_df
         self.refresh_analysis()
 
+        print(f"[ANALYSIS] set_data concluído em {time.time() - start_time:.2f}s")
+
     def refresh_analysis(self):
         """Refresh analysis"""
+        import time
+        start_time = time.time()
+        print(f"[ANALYSIS] refresh_analysis iniciado - {time.strftime('%H:%M:%S')}")
+
         if self.invoices_df is None or self.invoices_df.empty:
             QMessageBox.warning(
                 self,
@@ -297,29 +307,55 @@ class InvoiceAnalysisTab(QWidget):
         matcher = InvoiceMatcher()
 
         # Customer summary
+        customer_start = time.time()
+        print(f"[ANALYSIS] Iniciando analyze_by_customer - {time.strftime('%H:%M:%S')}")
         self.customer_summary_df = matcher.analyze_by_customer(self.invoices_df, self.ofx_df)
+        print(f"[ANALYSIS] analyze_by_customer concluído em {time.time() - customer_start:.2f}s")
+
+        update_sint_start = time.time()
+        print(f"[ANALYSIS] Iniciando update_sintetica_table - {time.strftime('%H:%M:%S')}")
         self.update_sintetica_table()
+        print(f"[ANALYSIS] update_sintetica_table concluído em {time.time() - update_sint_start:.2f}s")
 
         # Monthly summary
+        monthly_start = time.time()
+        print(f"[ANALYSIS] Iniciando analyze_by_month - {time.strftime('%H:%M:%S')}")
         self.monthly_summary_df = matcher.analyze_by_month(self.invoices_df, self.ofx_df)
-        self.update_detalhada_table()
+        print(f"[ANALYSIS] analyze_by_month concluído em {time.time() - monthly_start:.2f}s")
 
+        update_det_start = time.time()
+        print(f"[ANALYSIS] Iniciando update_detalhada_table - {time.strftime('%H:%M:%S')}")
+        self.update_detalhada_table()
+        print(f"[ANALYSIS] update_detalhada_table concluído em {time.time() - update_det_start:.2f}s")
+
+        status_start = time.time()
+        print(f"[ANALYSIS] Iniciando update_status - {time.strftime('%H:%M:%S')}")
         self.update_status()
+        print(f"[ANALYSIS] update_status concluído em {time.time() - status_start:.2f}s")
+
+        print(f"[ANALYSIS] refresh_analysis concluído - Tempo total: {time.time() - start_time:.2f}s")
 
     def update_sintetica_table(self):
         """Update sintética tree with expandable customer details"""
+        import time
+        start_time = time.time()
+        print(f"[ANALYSIS-TREE] update_sintetica_table iniciado - {time.strftime('%H:%M:%S')}")
+
         df = self.customer_summary_df
 
         if df is None or df.empty:
             self.sintetica_tree.clear()
             return
 
+        clear_start = time.time()
         self.sintetica_tree.clear()
+        print(f"[ANALYSIS-TREE] Tree cleared em {time.time() - clear_start:.2f}s")
 
         # Font for parent items (bold)
         bold_font = QFont()
         bold_font.setBold(True)
 
+        populate_start = time.time()
         for row_idx, (idx, row) in enumerate(df.iterrows()):
             # Create parent item (customer summary)
             parent_item = QTreeWidgetItem(self.sintetica_tree)
@@ -368,6 +404,9 @@ class InvoiceAnalysisTab(QWidget):
             # Add child items (invoices and OFX receipts)
             self._add_customer_details(parent_item, row['cpf_cnpj'])
 
+        print(f"[ANALYSIS-TREE] Populated {len(df)} customers em {time.time() - populate_start:.2f}s")
+        print(f"[ANALYSIS-TREE] update_sintetica_table concluído - Tempo total: {time.time() - start_time:.2f}s")
+
     def _add_customer_details(self, parent_item, cpf_cnpj):
         """Add child items showing invoices and OFX receipts for a customer"""
         if self.invoices_df is None or self.invoices_df.empty:
@@ -394,10 +433,13 @@ class InvoiceAnalysisTab(QWidget):
                 invoice_item.setText(3, f"R$ {invoice.get('valor_servicos', 0):,.2f}")
 
                 # Show match status
-                status = invoice.get('match_status', 'pending')
-                if status == 'matched':
+                status = invoice.get('status', 'Pendente')
+                if status == 'Vinculado' or status == 'Pago':
                     invoice_item.setText(4, "✓ Vinculado")
                     invoice_item.setForeground(4, QColor(0, 128, 0))
+                elif status == 'Parcial':
+                    invoice_item.setText(4, "◐ Parcial")
+                    invoice_item.setForeground(4, QColor(200, 150, 0))
                 else:
                     invoice_item.setText(4, "⚠ Pendente")
                     invoice_item.setForeground(4, QColor(200, 100, 0))

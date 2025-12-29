@@ -55,7 +55,11 @@ class MatchThread(QThread):
         self.mode = mode
 
     def run(self):
+        import time
+
+        start_time = time.time()
         self.progress.emit("Iniciando análise...")
+        print(f"[MATCHING] Thread iniciada - {time.strftime('%H:%M:%S')}")
 
         matcher = InvoiceMatcher(
             tolerance_days=self.tolerance_days,
@@ -63,11 +67,20 @@ class MatchThread(QThread):
             mode=self.mode
         )
 
+        match_start = time.time()
+        print(f"[MATCHING] Iniciando match() - {time.strftime('%H:%M:%S')}")
         invoices, matches, summary = matcher.match(self.invoices_df, self.ofx_df)
+        match_end = time.time()
+        print(f"[MATCHING] Match concluído em {match_end - match_start:.2f}s - {time.strftime('%H:%M:%S')}")
 
         self.progress.emit(f"Análise concluída: {summary['matched']} de {summary['total_invoices']} nota(s) vinculada(s)")
 
+        emit_start = time.time()
+        print(f"[MATCHING] Emitindo sinal finished - {time.strftime('%H:%M:%S')}")
         self.finished.emit(invoices, matches, summary)
+        emit_end = time.time()
+        print(f"[MATCHING] Sinal emitido em {emit_end - emit_start:.2f}s - {time.strftime('%H:%M:%S')}")
+        print(f"[MATCHING] Thread finalizada - Tempo total: {emit_end - start_time:.2f}s")
 
 
 class InvoicesTab(QWidget):
@@ -575,17 +588,34 @@ class InvoicesTab(QWidget):
 
     def on_match_finished(self, invoices, matches, summary):
         """Handle match finished"""
+        import time
+
+        start_time = time.time()
+        print(f"[UI] on_match_finished iniciado - {time.strftime('%H:%M:%S')}")
+
         self.progress_bar.setVisible(False)
         self.btn_match.setEnabled(True)
 
         self.invoices_df = invoices
         self.matches_df = matches
 
+        update_table_start = time.time()
+        print(f"[UI] Iniciando update_table() - {time.strftime('%H:%M:%S')}")
         self.update_table()
+        print(f"[UI] update_table() concluído em {time.time() - update_table_start:.2f}s")
+
+        update_status_start = time.time()
+        print(f"[UI] Iniciando update_status() - {time.strftime('%H:%M:%S')}")
         self.update_status()
+        print(f"[UI] update_status() concluído em {time.time() - update_status_start:.2f}s")
 
         # Emit signal to update other tabs with matched data
+        emit_start = time.time()
+        print(f"[UI] Emitindo invoices_loaded signal - {time.strftime('%H:%M:%S')}")
         self.invoices_loaded.emit(self.invoices_df)
+        print(f"[UI] Signal emitido em {time.time() - emit_start:.2f}s")
+
+        print(f"[UI] on_match_finished concluído - Tempo total: {time.time() - start_time:.2f}s")
 
         QMessageBox.information(
             self,
