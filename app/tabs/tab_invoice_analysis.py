@@ -195,7 +195,7 @@ class InvoiceAnalysisTab(QWidget):
         self.sintetica_table.setColumnCount(7)
         self.sintetica_table.setHorizontalHeaderLabels([
             'CPF/CNPJ', 'Nome', 'Qtd Notas', 'Total Emitido (R$)',
-            'Total Recebido (R$)', 'Pendente (R$)', '% Recebido'
+            'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
         ])
 
         # Configure table
@@ -244,7 +244,7 @@ class InvoiceAnalysisTab(QWidget):
         self.detalhada_table.setColumnCount(6)
         self.detalhada_table.setHorizontalHeaderLabels([
             'Mês', 'Qtd Notas', 'Total Emitido (R$)',
-            'Total Recebido (R$)', 'Pendente (R$)', '% Recebido'
+            'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
         ])
 
         # Configure table
@@ -350,17 +350,17 @@ class InvoiceAnalysisTab(QWidget):
 
             self.sintetica_table.setItem(row_idx, 5, pendente_item)
 
-            # % Recebido
-            percent_item = QTableWidgetItem(f"{row['percent_recebido']:.1f}%")
+            # % Markup
+            percent_item = QTableWidgetItem(f"{row['percent_markup']:.1f}%")
             percent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            # Color code
-            if row['percent_recebido'] >= 100:
-                percent_item.setBackground(QColor(200, 255, 200))
-            elif row['percent_recebido'] >= 80:
-                percent_item.setBackground(QColor(255, 255, 200))
+            # Color code (for markup: 5-15% is normal range for agency commission)
+            if 5 <= row['percent_markup'] <= 15:
+                percent_item.setBackground(QColor(200, 255, 200))  # Green - normal range
+            elif row['percent_markup'] < 5 or row['percent_markup'] > 20:
+                percent_item.setBackground(QColor(255, 200, 200))  # Red - unusual
             else:
-                percent_item.setBackground(QColor(255, 200, 200))
+                percent_item.setBackground(QColor(255, 255, 200))  # Yellow - acceptable
 
             self.sintetica_table.setItem(row_idx, 6, percent_item)
 
@@ -405,17 +405,17 @@ class InvoiceAnalysisTab(QWidget):
 
             self.detalhada_table.setItem(row_idx, 4, pendente_item)
 
-            # % Recebido
-            percent_item = QTableWidgetItem(f"{row['percent_recebido']:.1f}%")
+            # % Markup
+            percent_item = QTableWidgetItem(f"{row['percent_markup']:.1f}%")
             percent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-            # Color code
-            if row['percent_recebido'] >= 100:
-                percent_item.setBackground(QColor(200, 255, 200))
-            elif row['percent_recebido'] >= 80:
-                percent_item.setBackground(QColor(255, 255, 200))
+            # Color code (for markup: 5-15% is normal range for agency commission)
+            if 5 <= row['percent_markup'] <= 15:
+                percent_item.setBackground(QColor(200, 255, 200))  # Green - normal range
+            elif row['percent_markup'] < 5 or row['percent_markup'] > 20:
+                percent_item.setBackground(QColor(255, 200, 200))  # Red - unusual
             else:
-                percent_item.setBackground(QColor(255, 200, 200))
+                percent_item.setBackground(QColor(255, 255, 200))  # Yellow - acceptable
 
             self.detalhada_table.setItem(row_idx, 5, percent_item)
 
@@ -457,12 +457,12 @@ class InvoiceAnalysisTab(QWidget):
                 # Prepare export dataframe
                 export_df = self.customer_summary_df[[
                     'cpf_cnpj_fmt', 'nome', 'qtd_notas',
-                    'total_emitido', 'total_recebido', 'total_pendente', 'percent_recebido'
+                    'total_emitido', 'total_recebido', 'total_pendente', 'percent_markup'
                 ]].copy()
 
                 export_df.columns = [
                     'CPF/CNPJ', 'Nome', 'Qtd Notas',
-                    'Total Emitido (R$)', 'Total Recebido (R$)', 'Pendente (R$)', '% Recebido'
+                    'Total Emitido (R$)', 'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
                 ]
 
                 export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
@@ -497,12 +497,12 @@ class InvoiceAnalysisTab(QWidget):
                 # Prepare export dataframe
                 export_df = self.monthly_summary_df[[
                     'mes', 'qtd_notas',
-                    'total_emitido', 'total_recebido', 'total_pendente', 'percent_recebido'
+                    'total_emitido', 'total_recebido', 'total_pendente', 'percent_markup'
                 ]].copy()
 
                 export_df.columns = [
                     'Mês', 'Qtd Notas',
-                    'Total Emitido (R$)', 'Total Recebido (R$)', 'Pendente (R$)', '% Recebido'
+                    'Total Emitido (R$)', 'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
                 ]
 
                 export_df.to_csv(file_path, index=False, encoding='utf-8-sig')

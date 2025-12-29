@@ -516,9 +516,11 @@ class InvoiceMatcher:
 
         summary.columns = ['cpf_cnpj', 'qtd_notas', 'total_emitido', 'total_recebido', 'nome', 'cpf_cnpj_fmt']
 
-        # Calculate pending
+        # Calculate pending and markup percentage
         summary['total_pendente'] = summary['total_emitido'] - summary['total_recebido']
-        summary['percent_recebido'] = (summary['total_recebido'] / summary['total_emitido'] * 100).round(2)
+        # For agencies: % markup = (nota emitida / valor recebido) * 100
+        # Example: R$ 1.000 nota / R$ 10.000 recebido = 10% markup
+        summary['percent_markup'] = (summary['total_emitido'] / summary['total_recebido'] * 100).round(2)
 
         # Sort by pending value
         summary = summary.sort_values('total_pendente', ascending=False)
@@ -552,9 +554,11 @@ class InvoiceMatcher:
 
         summary.columns = ['mes', 'qtd_notas', 'total_emitido', 'total_recebido']
 
-        # Calculate pending
+        # Calculate pending and markup percentage
         summary['total_pendente'] = summary['total_emitido'] - summary['total_recebido']
-        summary['percent_recebido'] = (summary['total_recebido'] / summary['total_emitido'] * 100).round(2)
+        # For agencies: % markup = (nota emitida / valor recebido) * 100
+        # Example: R$ 1.000 nota / R$ 10.000 recebido = 10% markup
+        summary['percent_markup'] = (summary['total_emitido'] / summary['total_recebido'] * 100).round(2)
 
         # Convert period to string
         summary['mes'] = summary['mes'].astype(str)
