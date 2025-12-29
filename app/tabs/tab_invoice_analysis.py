@@ -5,9 +5,9 @@ Invoice Analysis Tab - Analyze invoices vs OFX receipts
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QLabel, QFileDialog,
                              QGroupBox, QComboBox, QHeaderView, QAbstractItemView,
-                             QMessageBox, QTabWidget)
+                             QMessageBox, QTabWidget, QTreeWidget, QTreeWidgetItem)
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QFont
 import sys
 import os
 import pandas as pd
@@ -186,20 +186,20 @@ class InvoiceAnalysisTab(QWidget):
         layout = QVBoxLayout()
 
         # Info label
-        info_label = QLabel("Resumo por cliente (CPF/CNPJ) - Total de notas emitidas vs recebimentos")
+        info_label = QLabel("Resumo por cliente (CPF/CNPJ) - Clique no '+' para expandir e ver notas e recebimentos")
         info_label.setStyleSheet("font-size: 10px; color: #666; padding: 5px;")
         layout.addWidget(info_label)
 
-        # Table
-        self.sintetica_table = QTableWidget()
-        self.sintetica_table.setColumnCount(7)
-        self.sintetica_table.setHorizontalHeaderLabels([
+        # Tree widget (replaces table for expandable rows)
+        self.sintetica_tree = QTreeWidget()
+        self.sintetica_tree.setColumnCount(7)
+        self.sintetica_tree.setHeaderLabels([
             'CPF/CNPJ', 'Nome', 'Qtd Notas', 'Total Emitido (R$)',
             'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
         ])
 
-        # Configure table
-        header = self.sintetica_table.horizontalHeader()
+        # Configure tree
+        header = self.sintetica_tree.header()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -208,10 +208,10 @@ class InvoiceAnalysisTab(QWidget):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
 
-        self.sintetica_table.setAlternatingRowColors(True)
-        self.sintetica_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.sintetica_table.setStyleSheet("""
-            QTableWidget {
+        self.sintetica_tree.setAlternatingRowColors(True)
+        self.sintetica_tree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.sintetica_tree.setStyleSheet("""
+            QTreeWidget {
                 gridline-color: #E0E0E0;
                 font-size: 10px;
             }
@@ -224,7 +224,7 @@ class InvoiceAnalysisTab(QWidget):
             }
         """)
 
-        layout.addWidget(self.sintetica_table)
+        layout.addWidget(self.sintetica_tree)
 
         widget.setLayout(layout)
         return widget
@@ -307,62 +307,122 @@ class InvoiceAnalysisTab(QWidget):
         self.update_status()
 
     def update_sintetica_table(self):
-        """Update sintética table"""
+        """Update sintética tree with expandable customer details"""
         df = self.customer_summary_df
 
         if df is None or df.empty:
-            self.sintetica_table.setRowCount(0)
+            self.sintetica_tree.clear()
             return
 
-        self.sintetica_table.setRowCount(len(df))
+        self.sintetica_tree.clear()
+
+        # Font for parent items (bold)
+        bold_font = QFont()
+        bold_font.setBold(True)
 
         for row_idx, (idx, row) in enumerate(df.iterrows()):
+            # Create parent item (customer summary)
+            parent_item = QTreeWidgetItem(self.sintetica_tree)
+            parent_item.setFont(0, bold_font)
+
             # CPF/CNPJ
-            self.sintetica_table.setItem(row_idx, 0, QTableWidgetItem(row['cpf_cnpj_fmt']))
+            parent_item.setText(0, row['cpf_cnpj_fmt'])
 
             # Nome
-            self.sintetica_table.setItem(row_idx, 1, QTableWidgetItem(row['nome']))
+            parent_item.setText(1, row['nome'])
 
             # Qtd Notas
-            qtd_item = QTableWidgetItem(str(row['qtd_notas']))
-            qtd_item.setTextAlignment(Qt.AlignCenter)
-            self.sintetica_table.setItem(row_idx, 2, qtd_item)
+            parent_item.setText(2, str(row['qtd_notas']))
+            parent_item.setTextAlignment(2, Qt.AlignCenter)
 
             # Total Emitido
-            emitido_item = QTableWidgetItem(f"R$ {row['total_emitido']:,.2f}")
-            emitido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.sintetica_table.setItem(row_idx, 3, emitido_item)
+            parent_item.setText(3, f"R$ {row['total_emitido']:,.2f}")
+            parent_item.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
 
             # Total Recebido
-            recebido_item = QTableWidgetItem(f"R$ {row['total_recebido']:,.2f}")
-            recebido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.sintetica_table.setItem(row_idx, 4, recebido_item)
+            parent_item.setText(4, f"R$ {row['total_recebido']:,.2f}")
+            parent_item.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
 
             # Pendente
-            pendente_item = QTableWidgetItem(f"R$ {row['total_pendente']:,.2f}")
-            pendente_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            parent_item.setText(5, f"R$ {row['total_pendente']:,.2f}")
+            parent_item.setTextAlignment(5, Qt.AlignRight | Qt.AlignVCenter)
 
-            # Color code
+            # Color code for pendente
             if row['total_pendente'] > 0:
-                pendente_item.setBackground(QColor(255, 200, 200))
+                parent_item.setBackground(5, QColor(255, 200, 200))
             else:
-                pendente_item.setBackground(QColor(200, 255, 200))
-
-            self.sintetica_table.setItem(row_idx, 5, pendente_item)
+                parent_item.setBackground(5, QColor(200, 255, 200))
 
             # % Markup
-            percent_item = QTableWidgetItem(f"{row['percent_markup']:.1f}%")
-            percent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            parent_item.setText(6, f"{row['percent_markup']:.1f}%")
+            parent_item.setTextAlignment(6, Qt.AlignRight | Qt.AlignVCenter)
 
-            # Color code (for markup: 5-15% is normal range for agency commission)
+            # Color code for markup
             if 5 <= row['percent_markup'] <= 15:
-                percent_item.setBackground(QColor(200, 255, 200))  # Green - normal range
+                parent_item.setBackground(6, QColor(200, 255, 200))  # Green - normal range
             elif row['percent_markup'] < 5 or row['percent_markup'] > 20:
-                percent_item.setBackground(QColor(255, 200, 200))  # Red - unusual
+                parent_item.setBackground(6, QColor(255, 200, 200))  # Red - unusual
             else:
-                percent_item.setBackground(QColor(255, 255, 200))  # Yellow - acceptable
+                parent_item.setBackground(6, QColor(255, 255, 200))  # Yellow - acceptable
 
-            self.sintetica_table.setItem(row_idx, 6, percent_item)
+            # Add child items (invoices and OFX receipts)
+            self._add_customer_details(parent_item, row['cpf_cnpj'])
+
+    def _add_customer_details(self, parent_item, cpf_cnpj):
+        """Add child items showing invoices and OFX receipts for a customer"""
+        if self.invoices_df is None or self.invoices_df.empty:
+            return
+
+        # Get customer's invoices
+        customer_invoices = self.invoices_df[self.invoices_df['cpf_cnpj'] == cpf_cnpj].copy()
+
+        if not customer_invoices.empty:
+            # Add "Notas Fiscais" section header
+            invoices_header = QTreeWidgetItem(parent_item)
+            invoices_header.setText(0, "📄 NOTAS FISCAIS")
+            invoices_header.setBackground(0, QColor(240, 248, 255))
+            font = QFont()
+            font.setBold(True)
+            invoices_header.setFont(0, font)
+
+            # Add each invoice as a child
+            for idx, invoice in customer_invoices.iterrows():
+                invoice_item = QTreeWidgetItem(invoices_header)
+                invoice_item.setText(0, str(invoice.get('numero', 'N/A')))
+                invoice_item.setText(1, invoice.get('nome_tomador', ''))
+                invoice_item.setText(2, invoice.get('data_emissao', '')[:10] if pd.notna(invoice.get('data_emissao')) else '')
+                invoice_item.setText(3, f"R$ {invoice.get('valor_servicos', 0):,.2f}")
+
+                # Show match status
+                status = invoice.get('match_status', 'pending')
+                if status == 'matched':
+                    invoice_item.setText(4, "✓ Vinculado")
+                    invoice_item.setForeground(4, QColor(0, 128, 0))
+                else:
+                    invoice_item.setText(4, "⚠ Pendente")
+                    invoice_item.setForeground(4, QColor(200, 100, 0))
+
+        # Get customer's OFX receipts
+        if self.ofx_df is not None and not self.ofx_df.empty:
+            customer_ofx = self.ofx_df[self.ofx_df['cpf_cnpj'] == cpf_cnpj].copy()
+
+            if not customer_ofx.empty:
+                # Add "Recebimentos OFX" section header
+                ofx_header = QTreeWidgetItem(parent_item)
+                ofx_header.setText(0, "💰 RECEBIMENTOS OFX")
+                ofx_header.setBackground(0, QColor(240, 255, 240))
+                font = QFont()
+                font.setBold(True)
+                ofx_header.setFont(0, font)
+
+                # Add each OFX transaction as a child
+                for idx, ofx in customer_ofx.iterrows():
+                    ofx_item = QTreeWidgetItem(ofx_header)
+                    ofx_item.setText(0, str(ofx.get('id_transacao', 'N/A')))
+                    ofx_item.setText(1, ofx.get('descricao', ''))
+                    ofx_item.setText(2, ofx.get('data', '')[:10] if pd.notna(ofx.get('data')) else '')
+                    ofx_item.setText(4, f"R$ {ofx.get('valor', 0):,.2f}")
+                    ofx_item.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
 
     def update_detalhada_table(self):
         """Update detalhada table"""
