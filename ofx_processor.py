@@ -9,6 +9,7 @@ from typing import List, Dict, Any
 import chardet
 import pandas as pd
 from ofxparse import OfxParser
+from core.ofx_enricher import enrich_ofx_data
 
 
 class OFXProcessor:
@@ -455,15 +456,20 @@ class OFXProcessor:
             except:
                 pass
 
+        # Enrich OFX data with CPF/CNPJ extraction from memo field
+        if not df.empty:
+            df = enrich_ofx_data(df)
+            print(f"[OFX] Enriched with CPF/CNPJ extraction. Found {len(df[df['cpf_cnpj'] != ''])} transactions with CPF/CNPJ.")
+
         return df
 
     def export_to_csv(self, df: pd.DataFrame, output_path: str, include_time: bool = True) -> bool:
         """Export DataFrame to CSV file"""
         try:
-            # Reorder columns
+            # Reorder columns (updated per user request: Data/Descrição/CPF ou CNPJ/Valor/Tipo de Operação/Banco/Conta)
             columns_order = [
-                'data', 'hora', 'banco', 'conta', 'tipo_conta',
-                'tipo_transacao', 'valor', 'descricao',
+                'data', 'descricao', 'cpf_cnpj', 'valor', 'tipo_transacao',
+                'banco', 'conta', 'tipo_conta', 'hora',
                 'id_transacao', 'numero_cheque', 'arquivo_origem'
             ]
 
@@ -486,10 +492,10 @@ class OFXProcessor:
     def export_to_excel(self, df: pd.DataFrame, output_path: str, include_time: bool = True) -> bool:
         """Export DataFrame to Excel file"""
         try:
-            # Reorder columns
+            # Reorder columns (updated per user request: Data/Descrição/CPF ou CNPJ/Valor/Tipo de Operação/Banco/Conta)
             columns_order = [
-                'data', 'hora', 'banco', 'conta', 'tipo_conta',
-                'tipo_transacao', 'valor', 'descricao',
+                'data', 'descricao', 'cpf_cnpj', 'valor', 'tipo_transacao',
+                'banco', 'conta', 'tipo_conta', 'hora',
                 'id_transacao', 'numero_cheque', 'arquivo_origem'
             ]
 

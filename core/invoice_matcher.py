@@ -1,5 +1,6 @@
 """
 Invoice Matcher - Match NFSe invoices with OFX receipts
+Supports both Standard and Agency modes
 """
 
 import pandas as pd
@@ -10,19 +11,207 @@ from utils.cpf_cnpj_validator import clean_cpf_cnpj
 class InvoiceMatcher:
     """Match invoices with OFX transactions"""
 
-    def __init__(self, tolerance_days=3, tolerance_percent=5.0):
+    def __init__(self, tolerance_days=3, tolerance_percent=5.0, mode='standard'):
         """
         Initialize matcher
 
         Args:
             tolerance_days: Days tolerance for date matching (±N days)
             tolerance_percent: Percentage tolerance for value matching (±N%)
+            mode: 'standard' or 'agency'
+                - standard: Match by CPF + Date + Value (service providers)
+                - agency: Match by CPF + Date only (travel agencies with markup)
         """
         self.tolerance_days = tolerance_days
         self.tolerance_percent = tolerance_percent / 100.0
+        self.mode = mode
         self.matches = []
 
     def match(self, invoices_df, ofx_df):
+        """
+        Match invoices with OFX transactions
+
+        Args:
+            invoices_df: DataFrame with invoices
+            ofx_df: DataFrame with OFX transactions
+
+        Returns:
+            tuple: (invoices_df_updated, matches_df, summary)
+        """
+        if self.mode == 'agency':
+            return self._match_agency_mode(invoices_df, ofx_df)
+        else:
+            return self._match_standard_mode(invoices_df, ofx_df)
+
+    def _match_agency_mode(self, invoices_df, ofx_df):
+        """
+        Match in AGENCY mode: CPF + Date only (ignore value)
+
+        Use case: Travel agencies where:
+        - Invoice value = markup/commission (e.g., R$ 200)
+        - OFX receipt = full payment from customer (e.g., R$ 1,200)
+        - Value comparison doesn't make sense!
+        """
+        if invoices_df is None or invoices_df.empty:
+            return invoices_df, pd.DataFrame(), {'total': 0, 'matched': 0, 'pending': 0}
+
+        if ofx_df is None or ofx_df.empty:
+            return invoices_df, pd.DataFrame(), {'total': len(invoices_df), 'matched': 0, 'pending': len(invoices_df)}
+
+        # Ensure CPF/CNPJ column exists in OFX
+        if 'cpf_cnpj' not in ofx_df.columns:
+            print("[MATCHER] Warning: OFX data doesn't have 'cpf_cnpj' column. Enriching...")
+            from core.ofx_enricher import enrich_ofx_data
+            ofx_df = enrich_ofx_data(ofx_df)
+
+        # Prepare OFX data (only credits)
+        ofx_receipts = ofx_df[ofx_df['valor'] > 0].copy()
+
+        # Prepare invoices
+        invoices = invoices_df.copy()
+
+        # Store matches
+        self.matches = []
+
+        # Group by CPF/CNPJ for efficient matching
+        for cpf_cnpj in invoices['cpf_cnpj'].unique():
+            if not cpf_cnpj:
+                continue
+
+            # Get all invoices for this CPF
+            cpf_invoices = invoices[invoices['cpf_cnpj'] == cpf_cnpj]
+
+            # Get all OFX receipts for this CPF
+            cpf_receipts = ofx_receipts[ofx_receipts['cpf_cnpj'] == cpf_cnpj]
+
+            if cpf_receipts.empty:
+                continue
+
+            # Match each invoice with receipts from same CPF
+            for inv_idx, invoice in cpf_invoices.iterrows():
+                matches = self._find_matches_agency(invoice, cpf_receipts)
+
+                if matches:
+                    # Update invoice
+                    invoices.at[inv_idx, 'status'] = 'Vinculado'
+                    invoices.at[inv_idx, 'match_count'] = len(matches)
+                    invoices.at[inv_idx, 'valor_matched'] = sum(m['valor'] for m in matches)
+                    invoices.at[inv_idx, 'match_ofx_ids'] = ','.join(str(m['ofx_id']) for m in matches)
+
+                    # Store match details
+                    for match in matches:
+                        self.matches.append({
+                            'invoice_numero': invoice['numero'],
+                            'invoice_data': invoice['data'],
+                            'invoice_valor': invoice['valor_liquido'],
+                            'invoice_cpf_cnpj': invoice['cpf_cnpj'],
+                            'invoice_nome': invoice['nome_tomador'],
+                            'ofx_id': match['ofx_id'],
+                            'ofx_data': match['data'],
+                            'ofx_valor': match['valor'],
+                            'ofx_descricao': match['descricao'],
+                            'days_diff': match['days_diff'],
+                            'match_score': match['score']
+                        })
+
+        # Create matches DataFrame
+        matches_df = pd.DataFrame(self.matches) if self.matches else pd.DataFrame()
+
+        # Summary
+        matched_count = len(invoices[invoices['status'] == 'Vinculado'])
+        summary = {
+            'total_invoices': len(invoices),
+            'matched': matched_count,
+            'pending': len(invoices) - matched_count,
+            'total_value': invoices['valor_liquido'].sum(),
+            'matched_value': invoices[invoices['status'] == 'Vinculado']['valor_matched'].sum(),
+            'pending_value': invoices[invoices['status'] == 'Pendente']['valor_liquido'].sum()
+        }
+
+        return invoices, matches_df, summary
+
+    def _find_matches_agency(self, invoice, ofx_receipts):
+        """
+        Find OFX receipts that match invoice (AGENCY mode)
+
+        Criteria:
+        - Same CPF/CNPJ (already filtered)
+        - Date within tolerance
+        - Ignore value!
+        """
+        matches = []
+
+        invoice_date = invoice['data_dt']
+
+        # Date range
+        date_min = invoice_date - timedelta(days=self.tolerance_days)
+        date_max = invoice_date + timedelta(days=self.tolerance_days)
+
+        # Find candidates by date only
+        candidates = ofx_receipts[
+            (ofx_receipts['data_dt'] >= date_min) &
+            (ofx_receipts['data_dt'] <= date_max)
+        ]
+
+        for _, receipt in candidates.iterrows():
+            score = self._calculate_match_score_agency(invoice, receipt)
+
+            if score >= 60:  # CPF match is mandatory (60 points)
+                days_diff = abs((receipt['data_dt'] - invoice_date).days)
+
+                matches.append({
+                    'ofx_id': receipt.name if hasattr(receipt, 'name') else receipt.get('ofx_id', 0),
+                    'data': receipt['data'],
+                    'valor': receipt['valor'],
+                    'descricao': receipt.get('memo', '') or receipt.get('descricao', ''),
+                    'days_diff': days_diff,
+                    'score': score
+                })
+
+        # Sort by score (best matches first)
+        matches.sort(key=lambda x: x['score'], reverse=True)
+
+        return matches
+
+    def _calculate_match_score_agency(self, invoice, receipt):
+        """
+        Calculate match score for AGENCY mode (0-100)
+
+        Score weights:
+        - CPF match: 60 points (mandatory)
+        - Date proximity: 30 points
+        - Name similarity: 10 points
+        """
+        score = 0
+
+        # 1. CPF/CNPJ match (MANDATORY - 60 points)
+        if invoice['cpf_cnpj'] == receipt['cpf_cnpj']:
+            score += 60
+        else:
+            return 0  # No match without CPF
+
+        # 2. Date proximity (30 points max)
+        days_diff = abs((receipt['data_dt'] - invoice['data_dt']).days)
+
+        if days_diff <= 5:
+            score += 30
+        elif days_diff <= 15:
+            score += 20
+        elif days_diff <= 35:
+            score += 10
+        elif days_diff <= 60:
+            score += 5
+
+        # 3. Name similarity (10 points) - optional
+        invoice_name = str(invoice.get('nome_tomador', '')).lower()
+        receipt_memo = str(receipt.get('memo', '')).lower()
+
+        if invoice_name and invoice_name in receipt_memo:
+            score += 10
+
+        return score
+
+    def _match_standard_mode(self, invoices_df, ofx_df):
         """
         Match invoices with OFX transactions
 

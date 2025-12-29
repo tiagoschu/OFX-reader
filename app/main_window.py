@@ -22,6 +22,7 @@ from app.tabs.tab_export import ExportTab
 from app.tabs.tab_config import ConfigTab
 from app.tabs.tab_invoices import InvoicesTab
 from app.tabs.tab_invoice_analysis import InvoiceAnalysisTab
+from app.tabs.tab_unmatched import UnmatchedTab
 from core.project import Project
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
@@ -72,6 +73,7 @@ class MainWindow(QMainWindow):
         self.tab_dre = DRETab()
         self.tab_invoices = InvoicesTab()
         self.tab_invoice_analysis = InvoiceAnalysisTab()
+        self.tab_unmatched = UnmatchedTab()
         self.tab_export = ExportTab()
         self.tab_settings = ConfigTab()
 
@@ -85,6 +87,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.tab_dre, "💼 DRE")
         self.tabs.addTab(self.tab_invoices, "📄 Notas Fiscais")
         self.tabs.addTab(self.tab_invoice_analysis, "🔗 Análise NFSe")
+        self.tabs.addTab(self.tab_unmatched, "🔍 Não Vinculados")
         self.tabs.addTab(self.tab_export, "💾 Exportar")
         self.tabs.addTab(self.tab_settings, "⚙️ Config")
 
@@ -192,6 +195,9 @@ class MainWindow(QMainWindow):
         # Update invoice analysis tab with OFX data
         self.tab_invoice_analysis.set_data(self.tab_invoices.get_invoices_data(), df)
 
+        # Update unmatched items tab
+        self.tab_unmatched.set_data(self.tab_invoices.get_invoices_data(), df)
+
         # Switch to home tab to show summary
         QTimer.singleShot(100, lambda: self.tabs.setCurrentWidget(self.tab_home))
 
@@ -201,6 +207,9 @@ class MainWindow(QMainWindow):
         """Handle invoices loaded signal"""
         # Update invoice analysis tab with invoice data
         self.tab_invoice_analysis.set_data(invoices_df, self.df)
+
+        # Update unmatched items tab
+        self.tab_unmatched.set_data(invoices_df, self.df)
 
         self.statusBar().showMessage(f"{len(invoices_df)} notas fiscais carregadas", 5000)
 
@@ -266,6 +275,7 @@ class MainWindow(QMainWindow):
             if invoices_df is not None and not invoices_df.empty:
                 self.tab_invoices.load_invoices(invoices_df)
                 self.tab_invoice_analysis.set_data(invoices_df, df)
+                self.tab_unmatched.set_data(invoices_df, df)
 
             # Update title with project name
             project_name = self.project.get_metadata().get('name', 'Projeto')

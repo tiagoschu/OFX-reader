@@ -46,19 +46,21 @@ class MatchThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal(object, object, object)  # invoices_df, matches_df, summary
 
-    def __init__(self, invoices_df, ofx_df, tolerance_days, tolerance_percent):
+    def __init__(self, invoices_df, ofx_df, tolerance_days, tolerance_percent, mode='standard'):
         super().__init__()
         self.invoices_df = invoices_df
         self.ofx_df = ofx_df
         self.tolerance_days = tolerance_days
         self.tolerance_percent = tolerance_percent
+        self.mode = mode
 
     def run(self):
         self.progress.emit("Iniciando análise...")
 
         matcher = InvoiceMatcher(
             tolerance_days=self.tolerance_days,
-            tolerance_percent=self.tolerance_percent
+            tolerance_percent=self.tolerance_percent,
+            mode=self.mode
         )
 
         invoices, matches, summary = matcher.match(self.invoices_df, self.ofx_df)
@@ -473,12 +475,29 @@ class InvoicesTab(QWidget):
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Configurações de Vinculação")
+        dialog.setMinimumWidth(400)
 
         layout = QFormLayout()
 
+        # Mode selector
+        mode_combo = QComboBox()
+        mode_combo.addItems(["Agência (CPF + Data)", "Standard (CPF + Data + Valor)"])
+        mode_combo.setCurrentIndex(0)  # Default to Agency mode
+        layout.addRow("Modo de Vinculação:", mode_combo)
+
+        # Add description
+        mode_desc = QLabel()
+        mode_desc.setWordWrap(True)
+        mode_desc.setStyleSheet("color: #666; font-size: 9px; padding: 5px;")
+        mode_desc.setText(
+            "• Agência: Vincula por CPF e Data (ignora diferença de valor - ideal para markup)\n"
+            "• Standard: Vincula por CPF, Data e Valor (para serviços com valor exato)"
+        )
+        layout.addRow("", mode_desc)
+
         days_spin = QSpinBox()
-        days_spin.setRange(0, 30)
-        days_spin.setValue(3)
+        days_spin.setRange(0, 90)
+        days_spin.setValue(35)  # Default to 35 days for agency mode
         layout.addRow("Tolerância de dias (±):", days_spin)
 
         percent_spin = QDoubleSpinBox()
@@ -486,6 +505,15 @@ class InvoicesTab(QWidget):
         percent_spin.setValue(5.0)
         percent_spin.setSuffix("%")
         layout.addRow("Tolerância de valor (±):", percent_spin)
+
+        # Update days default when mode changes
+        def on_mode_changed(index):
+            if index == 0:  # Agency mode
+                days_spin.setValue(35)
+            else:  # Standard mode
+                days_spin.setValue(3)
+
+        mode_combo.currentIndexChanged.connect(on_mode_changed)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dialog.accept)
@@ -497,6 +525,8 @@ class InvoicesTab(QWidget):
         if dialog.exec_() != QDialog.Accepted:
             return
 
+        # Get selected mode
+        mode = 'agency' if mode_combo.currentIndex() == 0 else 'standard'
         tolerance_days = days_spin.value()
         tolerance_percent = percent_spin.value()
 
@@ -510,7 +540,8 @@ class InvoicesTab(QWidget):
             self.invoices_df,
             self.ofx_df,
             tolerance_days,
-            tolerance_percent
+            tolerance_percent,
+            mode
         )
         self.match_thread.progress.connect(self.on_match_progress)
         self.match_thread.finished.connect(self.on_match_finished)
