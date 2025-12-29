@@ -584,6 +584,9 @@ class InvoicesTab(QWidget):
         self.update_table()
         self.update_status()
 
+        # Emit signal to update other tabs with matched data
+        self.invoices_loaded.emit(self.invoices_df)
+
         QMessageBox.information(
             self,
             "Vinculação Concluída",
