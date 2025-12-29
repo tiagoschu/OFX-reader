@@ -210,6 +210,7 @@ class InvoiceAnalysisTab(QWidget):
 
         self.sintetica_tree.setAlternatingRowColors(True)
         self.sintetica_tree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.sintetica_tree.setSortingEnabled(True)  # Enable column sorting
         self.sintetica_tree.setStyleSheet("""
             QTreeWidget {
                 gridline-color: #E0E0E0;
