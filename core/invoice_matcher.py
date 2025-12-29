@@ -205,10 +205,16 @@ class InvoiceMatcher:
                     'score': score
                 })
 
-        # Sort by score (best matches first)
-        matches.sort(key=lambda x: x['score'], reverse=True)
+        # Sort by score (best matches first), then by date proximity
+        matches.sort(key=lambda x: (x['score'], -x['days_diff']), reverse=True)
 
-        return matches
+        # Return only the BEST match (closest date) to avoid duplicates
+        # Each invoice should link to only ONE payment
+        if matches:
+            print(f"[MATCHER]       Best match: {matches[0]['days_diff']} days diff, score {matches[0]['score']}")
+            return [matches[0]]  # Return only the best match
+
+        return []
 
     def _calculate_match_score_agency(self, invoice, receipt):
         """

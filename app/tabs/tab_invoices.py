@@ -490,13 +490,14 @@ class InvoicesTab(QWidget):
         mode_desc.setWordWrap(True)
         mode_desc.setStyleSheet("color: #666; font-size: 9px; padding: 5px;")
         mode_desc.setText(
-            "• Agência: Vincula por CPF e Data (ignora diferença de valor - ideal para markup)\n"
+            "• Agência: Vincula por CPF e Data - escolhe o pagamento MAIS PRÓXIMO\n"
+            "  (ignora diferença de valor - ideal para markup)\n"
             "• Standard: Vincula por CPF, Data e Valor (para serviços com valor exato)"
         )
         layout.addRow("", mode_desc)
 
         days_spin = QSpinBox()
-        days_spin.setRange(0, 90)
+        days_spin.setRange(0, 365)  # Allow up to 1 year tolerance
         days_spin.setValue(35)  # Default to 35 days for agency mode
         layout.addRow("Tolerância de dias (±):", days_spin)
 
