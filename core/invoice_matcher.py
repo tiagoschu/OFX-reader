@@ -64,16 +64,40 @@ class InvoiceMatcher:
             from core.ofx_enricher import enrich_ofx_data
             ofx_df = enrich_ofx_data(ofx_df)
 
+        # Debug: Show CPF/CNPJ extraction stats
+        ofx_with_cpf = ofx_df[ofx_df['cpf_cnpj'] != '']
+        print(f"[MATCHER] OFX transactions with CPF/CNPJ: {len(ofx_with_cpf)} of {len(ofx_df)}")
+        if not ofx_with_cpf.empty:
+            print(f"[MATCHER] Sample OFX CPFs: {ofx_with_cpf['cpf_cnpj'].head(3).tolist()}")
+
+        # Debug: Show invoice CPF/CNPJ stats
+        inv_with_cpf = invoices_df[invoices_df['cpf_cnpj'] != '']
+        print(f"[MATCHER] Invoices with CPF/CNPJ: {len(inv_with_cpf)} of {len(invoices_df)}")
+        if not inv_with_cpf.empty:
+            print(f"[MATCHER] Sample Invoice CPFs: {inv_with_cpf['cpf_cnpj'].head(3).tolist()}")
+
         # Prepare OFX data (only credits)
         ofx_receipts = ofx_df[ofx_df['valor'] > 0].copy()
 
+        # Ensure data_dt column exists in OFX
+        if 'data_dt' not in ofx_receipts.columns:
+            print("[MATCHER] Creating data_dt column in OFX...")
+            ofx_receipts['data_dt'] = pd.to_datetime(ofx_receipts['data'], format='%d/%m/%Y', errors='coerce')
+
         # Prepare invoices
         invoices = invoices_df.copy()
+
+        # Ensure data_dt column exists in invoices
+        if 'data_dt' not in invoices.columns:
+            print("[MATCHER] Creating data_dt column in invoices...")
+            invoices['data_dt'] = pd.to_datetime(invoices['data'], format='%d/%m/%Y', errors='coerce')
 
         # Store matches
         self.matches = []
 
         # Group by CPF/CNPJ for efficient matching
+        print(f"[MATCHER] Starting agency mode matching for {len(invoices['cpf_cnpj'].unique())} unique CPFs...")
+
         for cpf_cnpj in invoices['cpf_cnpj'].unique():
             if not cpf_cnpj:
                 continue
@@ -85,11 +109,19 @@ class InvoiceMatcher:
             cpf_receipts = ofx_receipts[ofx_receipts['cpf_cnpj'] == cpf_cnpj]
 
             if cpf_receipts.empty:
+                print(f"[MATCHER] CPF {cpf_cnpj}: {len(cpf_invoices)} invoices, 0 OFX receipts - NO MATCH")
                 continue
+
+            print(f"[MATCHER] CPF {cpf_cnpj}: {len(cpf_invoices)} invoices, {len(cpf_receipts)} OFX receipts")
 
             # Match each invoice with receipts from same CPF
             for inv_idx, invoice in cpf_invoices.iterrows():
                 matches = self._find_matches_agency(invoice, cpf_receipts)
+
+                if matches:
+                    print(f"[MATCHER]   ✓ Invoice {invoice['numero']} matched with {len(matches)} payments")
+                else:
+                    print(f"[MATCHER]   ✗ Invoice {invoice['numero']} - no matches (date out of range?)")
 
                 if matches:
                     # Update invoice
@@ -147,11 +179,16 @@ class InvoiceMatcher:
         date_min = invoice_date - timedelta(days=self.tolerance_days)
         date_max = invoice_date + timedelta(days=self.tolerance_days)
 
+        # Debug: Show date range
+        print(f"[MATCHER]     Invoice date: {invoice['data']}, looking for payments between {date_min.strftime('%d/%m/%Y')} and {date_max.strftime('%d/%m/%Y')}")
+
         # Find candidates by date only
         candidates = ofx_receipts[
             (ofx_receipts['data_dt'] >= date_min) &
             (ofx_receipts['data_dt'] <= date_max)
         ]
+
+        print(f"[MATCHER]     Found {len(candidates)} candidates within date range")
 
         for _, receipt in candidates.iterrows():
             score = self._calculate_match_score_agency(invoice, receipt)

@@ -504,14 +504,35 @@ class InvoicesTab(QWidget):
         percent_spin.setRange(0, 50)
         percent_spin.setValue(5.0)
         percent_spin.setSuffix("%")
-        layout.addRow("Tolerância de valor (±):", percent_spin)
+        percent_label = QLabel("Tolerância de valor (±):")
+        layout.addRow(percent_label, percent_spin)
 
-        # Update days default when mode changes
+        # Add warning label for agency mode
+        value_warning = QLabel("⚠️ VALOR SERÁ IGNORADO NO MODO AGÊNCIA")
+        value_warning.setWordWrap(True)
+        value_warning.setStyleSheet("color: #F57C00; font-size: 10px; font-weight: bold; padding: 5px;")
+        value_warning.setVisible(True)  # Start visible (agency mode is default)
+        layout.addRow("", value_warning)
+
+        # Update days default and enable/disable value tolerance when mode changes
         def on_mode_changed(index):
             if index == 0:  # Agency mode
                 days_spin.setValue(35)
+                percent_spin.setEnabled(False)
+                percent_label.setEnabled(False)
+                percent_spin.setValue(0.0)  # Set to 0 to make it clear it's not used
+                value_warning.setVisible(True)
             else:  # Standard mode
                 days_spin.setValue(3)
+                percent_spin.setEnabled(True)
+                percent_label.setEnabled(True)
+                percent_spin.setValue(5.0)
+                value_warning.setVisible(False)
+
+        # Set initial state (agency mode)
+        percent_spin.setEnabled(False)
+        percent_label.setEnabled(False)
+        percent_spin.setValue(0.0)
 
         mode_combo.currentIndexChanged.connect(on_mode_changed)
 
