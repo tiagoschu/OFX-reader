@@ -23,6 +23,7 @@ from app.tabs.tab_config import ConfigTab
 from app.tabs.tab_invoices import InvoicesTab
 from app.tabs.tab_invoice_analysis import InvoiceAnalysisTab
 from app.tabs.tab_unmatched import UnmatchedTab
+from app.tabs.tab_credit_cards import CreditCardsTab
 from core.project import Project
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
@@ -66,28 +67,30 @@ class MainWindow(QMainWindow):
         # Create tabs
         self.tab_home = HomeTab()
         self.tab_import = ImportTab()
+        self.tab_invoices = InvoicesTab()
+        self.tab_credit_cards = CreditCardsTab()
+        self.tab_invoice_analysis = InvoiceAnalysisTab()
+        self.tab_unmatched = UnmatchedTab()
         self.tab_analysis = AnalysisTab()
         self.tab_charts = ChartsTab()
         self.tab_categories = CategoriesTab()
         self.tab_reports = ReportsTab()
         self.tab_dre = DRETab()
-        self.tab_invoices = InvoicesTab()
-        self.tab_invoice_analysis = InvoiceAnalysisTab()
-        self.tab_unmatched = UnmatchedTab()
         self.tab_export = ExportTab()
         self.tab_settings = ConfigTab()
 
-        # Add tabs
+        # Add tabs (reorganized: import tabs at positions 1, 2, 3)
         self.tabs.addTab(self.tab_home, "🏠 Início")
-        self.tabs.addTab(self.tab_import, "📥 Importar")
+        self.tabs.addTab(self.tab_import, "📥 OFX Import")
+        self.tabs.addTab(self.tab_invoices, "📄 NFSe Import")
+        self.tabs.addTab(self.tab_credit_cards, "💳 Vendas Cartão")
+        self.tabs.addTab(self.tab_invoice_analysis, "🔗 Análise NFSe")
+        self.tabs.addTab(self.tab_unmatched, "🔍 Não Vinculados")
         self.tabs.addTab(self.tab_analysis, "📊 Análises")
         self.tabs.addTab(self.tab_charts, "📈 Gráficos")
         self.tabs.addTab(self.tab_categories, "🎯 Categorias")
         self.tabs.addTab(self.tab_reports, "📋 Relatórios")
         self.tabs.addTab(self.tab_dre, "💼 DRE")
-        self.tabs.addTab(self.tab_invoices, "📄 Notas Fiscais")
-        self.tabs.addTab(self.tab_invoice_analysis, "🔗 Análise NFSe")
-        self.tabs.addTab(self.tab_unmatched, "🔍 Não Vinculados")
         self.tabs.addTab(self.tab_export, "💾 Exportar")
         self.tabs.addTab(self.tab_settings, "⚙️ Config")
 
@@ -96,6 +99,8 @@ class MainWindow(QMainWindow):
         self.tab_categories.data_recategorized.connect(self.on_data_recategorized)
         self.tab_invoices.invoices_loaded.connect(self.on_invoices_loaded)
         self.tab_invoices.match_requested.connect(self.on_match_requested)
+        self.tab_credit_cards.cards_loaded.connect(self.on_cards_loaded)
+        self.tab_credit_cards.match_requested.connect(self.on_match_requested)
 
         # Set central widget
         self.setCentralWidget(self.tabs)
@@ -192,6 +197,9 @@ class MainWindow(QMainWindow):
         # Update invoices tab with OFX data for matching
         self.tab_invoices.set_ofx_data(df)
 
+        # Update credit cards tab with OFX data for matching
+        self.tab_credit_cards.set_ofx_data(df)
+
         # Update invoice analysis tab with OFX data
         self.tab_invoice_analysis.set_data(self.tab_invoices.get_invoices_data(), df)
 
@@ -212,6 +220,16 @@ class MainWindow(QMainWindow):
         self.tab_unmatched.set_data(invoices_df, self.df)
 
         self.statusBar().showMessage(f"{len(invoices_df)} notas fiscais carregadas", 5000)
+
+    def on_cards_loaded(self, sales_df, installments_df):
+        """Handle credit card sales loaded signal"""
+        # TODO: Update analysis tab to show credit card sales separately
+        # TODO: Update unmatched tab to show unmatched installments
+
+        self.statusBar().showMessage(
+            f"{len(sales_df)} venda(s) e {len(installments_df)} parcela(s) de cartão carregadas",
+            5000
+        )
 
     def on_match_requested(self):
         """Handle match requested - switch to import tab"""
@@ -376,6 +394,8 @@ class MainWindow(QMainWindow):
             duplicates=self.processor.duplicates if self.processor else [],
             invoices_df=self.tab_invoices.get_invoices_data(),
             invoice_matches_df=self.tab_invoices.matches_df if hasattr(self.tab_invoices, 'matches_df') else None,
+            credit_card_sales_df=self.tab_credit_cards.get_sales_df(),
+            credit_card_installments_df=self.tab_credit_cards.get_installments_df(),
             metadata=metadata
         )
 
