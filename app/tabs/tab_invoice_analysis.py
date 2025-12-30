@@ -362,11 +362,7 @@ class InvoiceAnalysisTab(QWidget):
         has_cards = self.installments_df is not None and not self.installments_df.empty
 
         if not has_invoices and not has_cards:
-            QMessageBox.warning(
-                self,
-                "Análise",
-                "Nenhum dado importado. Por favor, importe notas fiscais ou vendas de cartão primeiro."
-            )
+            # Silently return if no data - no need to warn user
             return
 
         # Generate summaries
@@ -890,12 +886,7 @@ class InvoiceAnalysisTab(QWidget):
                 ]
 
                 export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
-
-                QMessageBox.information(
-                    self,
-                    "Exportação",
-                    f"Análise sintética exportada com sucesso!\n\n{file_path}"
-                )
+                # File saved silently - no confirmation dialog needed
             except Exception as e:
                 QMessageBox.critical(
                     self,
@@ -958,14 +949,8 @@ class InvoiceAnalysisTab(QWidget):
                 export_df = pd.DataFrame(all_transactions)
                 if not export_df.empty:
                     export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
-
-                    QMessageBox.information(
-                        self,
-                        "Exportação",
-                        f"Transações detalhadas exportadas com sucesso!\n\nTotal: {len(all_transactions)} transações\n\n{file_path}"
-                    )
-                else:
-                    QMessageBox.warning(self, "Exportar", "Nenhuma transação encontrada para exportar.")
+                    # File saved silently - no confirmation dialog needed
+                # Silently skip if empty - no warning needed
 
             except Exception as e:
                 QMessageBox.critical(
