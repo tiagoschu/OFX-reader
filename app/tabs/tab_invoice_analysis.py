@@ -653,10 +653,20 @@ class InvoiceAnalysisTab(QWidget):
         if has_cards:
             for idx, inst in self.installments_df.iterrows():
                 # Use data_prevista (expected date) for installments
-                data_dt = pd.to_datetime(inst['data_prevista'], format='%d/%m/%Y', errors='coerce')
+                data_prevista = inst['data_prevista']
+
+                # Convert to datetime if it's a string, or use directly if it's already Timestamp
+                if isinstance(data_prevista, str):
+                    data_dt = pd.to_datetime(data_prevista, format='%d/%m/%Y', errors='coerce')
+                    data_str = data_prevista
+                else:
+                    # It's already a Timestamp
+                    data_dt = data_prevista
+                    data_str = data_prevista.strftime('%d/%m/%Y') if pd.notna(data_prevista) else ''
+
                 all_transactions.append({
                     'data_dt': data_dt,
-                    'data_str': inst['data_prevista'],
+                    'data_str': data_str,
                     'tipo': 'Cartão',
                     'cpf_cnpj': inst.get('cpf_cliente', ''),
                     'cpf_cnpj_fmt': inst.get('cpf_cliente', ''),  # Format if needed
