@@ -293,20 +293,6 @@ class CreditCardsTab(QWidget):
 
     def download_template(self):
         """Download CSV template"""
-        template_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            'templates',
-            'vendas_cartao_modelo.csv'
-        )
-
-        if not os.path.exists(template_path):
-            QMessageBox.warning(
-                self,
-                "Arquivo não encontrado",
-                f"Modelo CSV não encontrado em:\n{template_path}"
-            )
-            return
-
         # Ask where to save
         save_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -316,13 +302,36 @@ class CreditCardsTab(QWidget):
         )
 
         if save_path:
-            import shutil
-            shutil.copy(template_path, save_path)
-            QMessageBox.information(
-                self,
-                "Sucesso",
-                f"Modelo salvo em:\n{save_path}"
-            )
+            # Create template CSV content
+            template_content = """Data da venda,Hora da venda,Estabelecimento,CPF/CNPJ do estabelecimento,Forma de pagamento,Quantidade total de parcelas,Bandeira,Valor bruto,Taxa/tarifa,Valor líquido,Status da venda,Tipo de lançamento,Modalidade,Tipo de captura,Documento de origem,Origem do valor,Motivo,Data do lançamento,Data prevista do pagamento,Código de autorização,NSU/DOC,Código da venda,TID,Origem do cartão,Nome,Email,Telefone,CPF,Adquirente
+10/05/2025,14:30:00,Loja Exemplo Ltda,12.345.678/0001-90,Crédito parcelado,4,Visa,100.00,4.49,95.51,Aprovada,Venda,Parcelado,Online,DOC123,Venda,Compra aprovada,10/05/2025,10/06/2025,AUTH001,NSU12345,VENDA001,TID001,Nacional,João Silva,joao@email.com,11999999999,12345678900,Cielo
+15/05/2025,16:45:00,Restaurante ABC,98.765.432/0001-10,Crédito à vista,1,Mastercard,250.00,7.50,242.50,Aprovada,Venda,À vista,Presencial,DOC124,Venda,Compra aprovada,15/05/2025,15/06/2025,AUTH002,NSU12346,VENDA002,TID002,Nacional,Maria Santos,maria@email.com,11988888888,98765432100,Stone
+20/05/2025,10:15:00,Serviços XYZ,11.222.333/0001-44,Débito,1,Elo,150.00,3.00,147.00,Aprovada,Venda,Débito,Online,DOC125,Venda,Compra aprovada,20/05/2025,22/05/2025,AUTH003,NSU12347,VENDA003,TID003,Nacional,Pedro Costa,pedro@email.com,11977777777,11122233344,Rede
+"""
+
+            try:
+                # Write template to file
+                with open(save_path, 'w', encoding='utf-8-sig') as f:
+                    f.write(template_content)
+
+                QMessageBox.information(
+                    self,
+                    "Sucesso",
+                    f"Modelo CSV salvo em:\n{save_path}\n\nCampos obrigatórios (*):\n" +
+                    "- CPF/CNPJ do estabelecimento\n" +
+                    "- Quantidade total de parcelas\n" +
+                    "- Valor bruto\n" +
+                    "- Taxa/tarifa\n" +
+                    "- Valor líquido\n" +
+                    "- Data do lançamento\n" +
+                    "- Data prevista do pagamento"
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Erro",
+                    f"Erro ao salvar modelo:\n{str(e)}"
+                )
 
     def start_parsing(self):
         """Start parsing CSV file in background thread"""
