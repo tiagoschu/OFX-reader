@@ -262,6 +262,7 @@ class InvoiceAnalysisTab(QWidget):
 
         self.detalhada_table.setAlternatingRowColors(True)
         self.detalhada_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.detalhada_table.setSortingEnabled(True)  # Enable column sorting
         self.detalhada_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: #E0E0E0;
@@ -389,18 +390,22 @@ class InvoiceAnalysisTab(QWidget):
 
             # Qtd Notas
             parent_item.setText(2, str(row['qtd_notas']))
+            parent_item.setData(2, Qt.UserRole, int(row['qtd_notas']))  # For numeric sorting
             parent_item.setTextAlignment(2, Qt.AlignCenter)
 
             # Total Emitido
             parent_item.setText(3, f"R$ {row['total_emitido']:,.2f}")
+            parent_item.setData(3, Qt.UserRole, float(row['total_emitido']))  # For numeric sorting
             parent_item.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
 
             # Total Recebido
             parent_item.setText(4, f"R$ {row['total_recebido']:,.2f}")
+            parent_item.setData(4, Qt.UserRole, float(row['total_recebido']))  # For numeric sorting
             parent_item.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
 
             # Pendente
             parent_item.setText(5, f"R$ {row['total_pendente']:,.2f}")
+            parent_item.setData(5, Qt.UserRole, float(row['total_pendente']))  # For numeric sorting
             parent_item.setTextAlignment(5, Qt.AlignRight | Qt.AlignVCenter)
 
             # Color code for pendente
@@ -411,6 +416,7 @@ class InvoiceAnalysisTab(QWidget):
 
             # % Markup
             parent_item.setText(6, f"{row['percent_markup']:.1f}%")
+            parent_item.setData(6, Qt.UserRole, float(row['percent_markup']))  # For numeric sorting
             parent_item.setTextAlignment(6, Qt.AlignRight | Qt.AlignVCenter)
 
             # Color code for markup
@@ -625,21 +631,25 @@ class InvoiceAnalysisTab(QWidget):
 
             # Qtd Notas
             qtd_item = QTableWidgetItem(str(row['qtd_notas']))
+            qtd_item.setData(Qt.UserRole, int(row['qtd_notas']))  # For numeric sorting
             qtd_item.setTextAlignment(Qt.AlignCenter)
             self.detalhada_table.setItem(row_idx, 1, qtd_item)
 
             # Total Emitido
             emitido_item = QTableWidgetItem(f"R$ {row['total_emitido']:,.2f}")
+            emitido_item.setData(Qt.UserRole, float(row['total_emitido']))  # For numeric sorting
             emitido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.detalhada_table.setItem(row_idx, 2, emitido_item)
 
             # Total Recebido
             recebido_item = QTableWidgetItem(f"R$ {row['total_recebido']:,.2f}")
+            recebido_item.setData(Qt.UserRole, float(row['total_recebido']))  # For numeric sorting
             recebido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.detalhada_table.setItem(row_idx, 3, recebido_item)
 
             # Pendente
             pendente_item = QTableWidgetItem(f"R$ {row['total_pendente']:,.2f}")
+            pendente_item.setData(Qt.UserRole, float(row['total_pendente']))  # For numeric sorting
             pendente_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
             # Color code
@@ -652,6 +662,7 @@ class InvoiceAnalysisTab(QWidget):
 
             # % Markup
             percent_item = QTableWidgetItem(f"{row['percent_markup']:.1f}%")
+            percent_item.setData(Qt.UserRole, float(row['percent_markup']))  # For numeric sorting
             percent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
             # Color code (for markup: 5-15% is normal range for agency commission)
