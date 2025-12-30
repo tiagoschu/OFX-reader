@@ -388,16 +388,16 @@ class InvoiceAnalysisTab(QWidget):
 
         # Group summary tree (expandable to show clients)
         self.group_tree = QTreeWidget()
-        self.group_tree.setColumnCount(7)
+        self.group_tree.setColumnCount(8)
         self.group_tree.setHeaderLabels([
             "Grupo / Cliente", "Qtd Notas", "Total Emitido",
-            "Total Recebido", "Total Pendente", "% Markup", "CPF"
+            "Total Recebido", "Total Pendente", "% Markup Meta", "% Markup Realizado", "CPF"
         ])
 
         # Tree styling
         header = self.group_tree.header()
         header.setSectionResizeMode(0, QHeaderView.Stretch)  # Group/Client name
-        for i in range(1, 6):
+        for i in range(1, 7):
             header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
         self.group_tree.setAlternatingRowColors(True)
@@ -408,6 +408,7 @@ class InvoiceAnalysisTab(QWidget):
             }
             QTreeWidget::item {
                 padding: 5px;
+                color: #000000;
             }
             QHeaderView::section {
                 background-color: #F5F5F5;
@@ -417,6 +418,7 @@ class InvoiceAnalysisTab(QWidget):
             }
             QTreeWidget::item:selected {
                 background-color: #E3F2FD;
+                color: #000000;
             }
         """)
 
@@ -1197,7 +1199,10 @@ class InvoiceAnalysisTab(QWidget):
                 total_emitido = group_data['total_emitido'].sum()
                 total_recebido = group_data['total_recebido'].sum()
                 total_pendente = group_data['total_pendente'].sum()
-                markup_percent = group_data['markup_grupo'].iloc[0] if len(group_data) > 0 else 0.0
+                markup_meta = group_data['markup_grupo'].iloc[0] if len(group_data) > 0 else 0.0
+
+                # Calculate markup realizado (actual markup achieved)
+                markup_realizado = ((total_recebido - total_emitido) / total_emitido * 100) if total_emitido > 0 else 0.0
 
                 # Create parent item (group summary)
                 parent_item = QTreeWidgetItem(self.group_tree)
@@ -1209,8 +1214,9 @@ class InvoiceAnalysisTab(QWidget):
                 parent_item.setText(2, f"R$ {total_emitido:,.2f}")
                 parent_item.setText(3, f"R$ {total_recebido:,.2f}")
                 parent_item.setText(4, f"R$ {total_pendente:,.2f}")
-                parent_item.setText(5, f"{markup_percent:.1f}%")
-                parent_item.setText(6, "")  # No CPF for group
+                parent_item.setText(5, f"{markup_meta:.1f}%")
+                parent_item.setText(6, f"{markup_realizado:.1f}%")
+                parent_item.setText(7, "")  # No CPF for group
 
                 # Style parent
                 parent_item.setTextAlignment(1, Qt.AlignRight)
@@ -1218,16 +1224,21 @@ class InvoiceAnalysisTab(QWidget):
                 parent_item.setTextAlignment(3, Qt.AlignRight)
                 parent_item.setTextAlignment(4, Qt.AlignRight)
                 parent_item.setTextAlignment(5, Qt.AlignCenter)
+                parent_item.setTextAlignment(6, Qt.AlignCenter)
 
                 parent_item.setBackground(2, QColor(240, 240, 240))  # Light gray for totals
                 parent_item.setBackground(3, QColor(200, 255, 200))  # Light green for received
                 if total_pendente > 0:
                     parent_item.setBackground(4, QColor(255, 200, 200))  # Light red for pending
-                parent_item.setBackground(5, QColor(220, 220, 255))  # Light blue for markup
+                parent_item.setBackground(5, QColor(220, 220, 255))  # Light blue for markup meta
+                parent_item.setBackground(6, QColor(200, 255, 255))  # Light cyan for markup realizado
 
                 # Add each client as a child
                 for idx, client in group_data.iterrows():
                     client_item = QTreeWidgetItem(parent_item)
+
+                    # Calculate client markup realizado
+                    client_markup_realizado = ((client['total_recebido'] - client['total_emitido']) / client['total_emitido'] * 100) if client['total_emitido'] > 0 else 0.0
 
                     # Client name
                     client_item.setText(0, f"  👤 {client['nome']}")
@@ -1236,7 +1247,8 @@ class InvoiceAnalysisTab(QWidget):
                     client_item.setText(3, f"R$ {client['total_recebido']:,.2f}")
                     client_item.setText(4, f"R$ {client['total_pendente']:,.2f}")
                     client_item.setText(5, f"{client['markup_grupo']:.1f}%")
-                    client_item.setText(6, client['cpf_cnpj_fmt'])
+                    client_item.setText(6, f"{client_markup_realizado:.1f}%")
+                    client_item.setText(7, client['cpf_cnpj_fmt'])
 
                     # Alignment
                     client_item.setTextAlignment(1, Qt.AlignRight)
@@ -1244,11 +1256,16 @@ class InvoiceAnalysisTab(QWidget):
                     client_item.setTextAlignment(3, Qt.AlignRight)
                     client_item.setTextAlignment(4, Qt.AlignRight)
                     client_item.setTextAlignment(5, Qt.AlignCenter)
+                    client_item.setTextAlignment(6, Qt.AlignCenter)
 
                     # Highlight received/pending
                     client_item.setBackground(3, QColor(230, 255, 230))  # Light green
                     if client['total_pendente'] > 0:
                         client_item.setBackground(4, QColor(255, 230, 230))  # Light red
+
+                    # Highlight markup columns
+                    client_item.setBackground(5, QColor(240, 240, 255))  # Light blue for markup meta
+                    client_item.setBackground(6, QColor(230, 255, 255))  # Light cyan for markup realizado
 
             # Expand all groups by default
             self.group_tree.expandAll()
