@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QLabel, QGroupBox,
                              QHeaderView, QAbstractItemView, QSplitter, QMessageBox,
                              QLineEdit)
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QColor
 import pandas as pd
 
@@ -27,6 +27,19 @@ class UnmatchedTab(QWidget):
         self.filtered_invoices = pd.DataFrame()  # For search filtering
         self.filtered_ofx = pd.DataFrame()  # For search filtering
         self.filtered_installments = pd.DataFrame()  # For search filtering
+
+        # Debounce timers for search (prevent lag on typing)
+        self.invoice_search_timer = QTimer()
+        self.invoice_search_timer.setSingleShot(True)
+        self.invoice_search_timer.timeout.connect(self._execute_invoice_filter)
+
+        self.ofx_search_timer = QTimer()
+        self.ofx_search_timer.setSingleShot(True)
+        self.ofx_search_timer.timeout.connect(self._execute_ofx_filter)
+
+        self.pending_invoice_search = ""
+        self.pending_ofx_search = ""
+
         self.init_ui()
 
     def init_ui(self):
@@ -361,7 +374,20 @@ class UnmatchedTab(QWidget):
         self.update_summary()
 
     def filter_invoices(self, search_text):
-        """Filter invoices table based on search text"""
+        """Filter invoices table based on search text (with debounce)"""
+        # Stop previous timer
+        self.invoice_search_timer.stop()
+
+        # Store search text
+        self.pending_invoice_search = search_text
+
+        # Start timer (300ms delay - waits for user to stop typing)
+        self.invoice_search_timer.start(300)
+
+    def _execute_invoice_filter(self):
+        """Actually execute the invoice filter (called by timer)"""
+        search_text = self.pending_invoice_search
+
         if not search_text or self.unmatched_invoices.empty:
             self.filtered_invoices = self.unmatched_invoices.copy()
         else:
@@ -377,7 +403,20 @@ class UnmatchedTab(QWidget):
         self.update_invoices_table()
 
     def filter_ofx(self, search_text):
-        """Filter OFX table based on search text"""
+        """Filter OFX table based on search text (with debounce)"""
+        # Stop previous timer
+        self.ofx_search_timer.stop()
+
+        # Store search text
+        self.pending_ofx_search = search_text
+
+        # Start timer (300ms delay - waits for user to stop typing)
+        self.ofx_search_timer.start(300)
+
+    def _execute_ofx_filter(self):
+        """Actually execute the OFX filter (called by timer)"""
+        search_text = self.pending_ofx_search
+
         if not search_text or self.unmatched_ofx.empty:
             self.filtered_ofx = self.unmatched_ofx.copy()
         else:
@@ -399,6 +438,9 @@ class UnmatchedTab(QWidget):
         if df is None or df.empty:
             self.invoices_table.setRowCount(0)
             return
+
+        # Disable sorting during update (major performance improvement)
+        self.invoices_table.setSortingEnabled(False)
 
         self.invoices_table.setRowCount(len(df))
 
@@ -435,6 +477,9 @@ class UnmatchedTab(QWidget):
 
             self.invoices_table.setItem(row_idx, 6, QTableWidgetItem(motivo))
 
+        # Re-enable sorting
+        self.invoices_table.setSortingEnabled(True)
+
     def update_ofx_table(self):
         """Update unmatched OFX transactions table"""
         df = self.filtered_ofx  # Use filtered data
@@ -442,6 +487,9 @@ class UnmatchedTab(QWidget):
         if df is None or df.empty:
             self.ofx_table.setRowCount(0)
             return
+
+        # Disable sorting during update (major performance improvement)
+        self.ofx_table.setSortingEnabled(False)
 
         self.ofx_table.setRowCount(len(df))
 
@@ -473,6 +521,9 @@ class UnmatchedTab(QWidget):
             # Conta
             conta = row.get('conta', 'N/A')[:15]
             self.ofx_table.setItem(row_idx, 5, QTableWidgetItem(conta))
+
+        # Re-enable sorting
+        self.ofx_table.setSortingEnabled(True)
 
     def update_summary(self):
         """Update summary label"""
