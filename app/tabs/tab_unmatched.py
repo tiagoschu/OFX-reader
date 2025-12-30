@@ -28,17 +28,11 @@ class UnmatchedTab(QWidget):
         self.filtered_ofx = pd.DataFrame()  # For search filtering
         self.filtered_installments = pd.DataFrame()  # For search filtering
 
-        # Debounce timers for search (prevent lag on typing)
-        self.invoice_search_timer = QTimer()
-        self.invoice_search_timer.setSingleShot(True)
-        self.invoice_search_timer.timeout.connect(self._execute_invoice_filter)
-
-        self.ofx_search_timer = QTimer()
-        self.ofx_search_timer.setSingleShot(True)
-        self.ofx_search_timer.timeout.connect(self._execute_ofx_filter)
-
-        self.pending_invoice_search = ""
-        self.pending_ofx_search = ""
+        # Debounce timer for unified search (prevent lag on typing)
+        self.unified_search_timer = QTimer()
+        self.unified_search_timer.setSingleShot(True)
+        self.unified_search_timer.timeout.connect(self._execute_unified_filter)
+        self.pending_unified_search = ""
 
         self.init_ui()
 
@@ -51,6 +45,10 @@ class UnmatchedTab(QWidget):
         header_frame = self._create_header()
         main_layout.addWidget(header_frame)
 
+        # Unified search and controls
+        top_controls = self._create_top_controls()
+        main_layout.addWidget(top_controls)
+
         # Summary stats
         self.summary_label = QLabel("Aguardando dados de vinculação...")
         self.summary_label.setStyleSheet("""
@@ -62,25 +60,18 @@ class UnmatchedTab(QWidget):
         """)
         main_layout.addWidget(self.summary_label)
 
-        # Splitter for two tables
-        splitter = QSplitter(Qt.Vertical)
-
-        # Unmatched invoices table
+        # Three tables stacked vertically (no splitter)
+        # 1. Unmatched invoices
         invoices_group = self._create_invoices_table()
-        splitter.addWidget(invoices_group)
+        main_layout.addWidget(invoices_group)
 
-        # Unmatched OFX transactions table
+        # 2. Unmatched OFX transactions
         ofx_group = self._create_ofx_table()
-        splitter.addWidget(ofx_group)
+        main_layout.addWidget(ofx_group)
 
-        # Set initial sizes (50/50 split)
-        splitter.setSizes([400, 400])
-
-        main_layout.addWidget(splitter)
-
-        # Manual matching controls
-        controls_frame = self._create_controls()
-        main_layout.addWidget(controls_frame)
+        # 3. Unmatched credit card installments
+        installments_group = self._create_installments_table()
+        main_layout.addWidget(installments_group)
 
         self.setLayout(main_layout)
 
@@ -111,36 +102,79 @@ class UnmatchedTab(QWidget):
 
         return header_frame
 
+    def _create_top_controls(self):
+        """Create unified search and link button"""
+        controls_frame = QWidget()
+        controls_frame.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border-radius: 6px;
+                padding: 8px;
+            }
+        """)
+
+        controls_layout = QHBoxLayout()
+        controls_layout.setContentsMargins(10, 5, 10, 5)
+
+        # Unified search
+        search_label = QLabel("🔍 Buscar:")
+        search_label.setStyleSheet("font-size: 11px; color: #666; font-weight: bold;")
+        controls_layout.addWidget(search_label)
+
+        self.unified_search = QLineEdit()
+        self.unified_search.setPlaceholderText("Digite para buscar em todas as tabelas (número, cliente, CPF, descrição)...")
+        self.unified_search.setStyleSheet("""
+            QLineEdit {
+                padding: 6px;
+                border: 2px solid #00897B;
+                border-radius: 4px;
+                font-size: 11px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #00695C;
+            }
+        """)
+        self.unified_search.textChanged.connect(self.filter_all_tables)
+        controls_layout.addWidget(self.unified_search, 1)  # Take most space
+
+        controls_layout.addSpacing(20)
+
+        # Manual match button
+        self.btn_manual_match = QPushButton("🔗 Vincular Selecionados")
+        self.btn_manual_match.setStyleSheet("""
+            QPushButton {
+                background-color: #00897B;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 15px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+            QPushButton:disabled {
+                background-color: #BDBDBD;
+                color: #757575;
+            }
+        """)
+        self.btn_manual_match.clicked.connect(self.create_manual_match)
+        self.btn_manual_match.setEnabled(False)
+        controls_layout.addWidget(self.btn_manual_match)
+
+        controls_frame.setLayout(controls_layout)
+        return controls_frame
+
     def _create_invoices_table(self):
         """Create unmatched invoices table"""
         invoices_group = QGroupBox("📄 Notas Fiscais Não Vinculadas")
         invoices_layout = QVBoxLayout()
 
-        # Search box for invoices
-        search_layout = QHBoxLayout()
-        search_label = QLabel("🔍 Buscar:")
-        search_label.setStyleSheet("font-size: 10px; color: #666;")
-        search_layout.addWidget(search_label)
-
-        self.invoice_search = QLineEdit()
-        self.invoice_search.setPlaceholderText("Digite para buscar (número, cliente, CPF/CNPJ)...")
-        self.invoice_search.setStyleSheet("""
-            QLineEdit {
-                padding: 5px;
-                border: 1px solid #E0E0E0;
-                border-radius: 3px;
-                font-size: 10px;
-            }
-        """)
-        self.invoice_search.textChanged.connect(self.filter_invoices)
-        search_layout.addWidget(self.invoice_search)
-
-        invoices_layout.addLayout(search_layout)
-
         self.invoices_table = QTableWidget()
-        self.invoices_table.setColumnCount(7)
+        self.invoices_table.setColumnCount(6)
         self.invoices_table.setHorizontalHeaderLabels([
-            'Nº', 'Data', 'Cliente', 'CPF/CNPJ', 'Valor', 'Status', 'Motivo'
+            'Nº', 'Data', 'Cliente', 'CPF/CNPJ', 'Valor', 'Status'
         ])
 
         # Configure table - Cliente column gets more space
@@ -151,12 +185,12 @@ class UnmatchedTab(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # CPF
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Valor
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Status
-        header.setSectionResizeMode(6, QHeaderView.Stretch)  # Motivo (expands)
 
         self.invoices_table.setAlternatingRowColors(True)
         self.invoices_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.invoices_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.invoices_table.setSelectionMode(QAbstractItemView.MultiSelection)  # Allow multiple selection
         self.invoices_table.setSortingEnabled(True)  # Enable column sorting
+        self.invoices_table.itemSelectionChanged.connect(self.update_link_button_state)  # Update button when selection changes
         self.invoices_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: #E0E0E0;
@@ -181,49 +215,28 @@ class UnmatchedTab(QWidget):
         ofx_group = QGroupBox("💰 Pagamentos Não Vinculados (OFX)")
         ofx_layout = QVBoxLayout()
 
-        # Search box for OFX
-        search_layout = QHBoxLayout()
-        search_label = QLabel("🔍 Buscar:")
-        search_label.setStyleSheet("font-size: 10px; color: #666;")
-        search_layout.addWidget(search_label)
-
-        self.ofx_search = QLineEdit()
-        self.ofx_search.setPlaceholderText("Digite para buscar (descrição, CPF/CNPJ, banco)...")
-        self.ofx_search.setStyleSheet("""
-            QLineEdit {
-                padding: 5px;
-                border: 1px solid #E0E0E0;
-                border-radius: 3px;
-                font-size: 10px;
-            }
-        """)
-        self.ofx_search.textChanged.connect(self.filter_ofx)
-        search_layout.addWidget(self.ofx_search)
-
-        ofx_layout.addLayout(search_layout)
-
         self.ofx_table = QTableWidget()
-        self.ofx_table.setColumnCount(6)
+        self.ofx_table.setColumnCount(5)
         self.ofx_table.setHorizontalHeaderLabels([
-            'Data', 'Descrição', 'CPF/CNPJ', 'Valor', 'Banco', 'Conta'
+            'Data', 'Descrição', 'CPF/CNPJ', 'Valor', 'Banco'
         ])
 
         # Configure table - Descrição gets much more space
         header = self.ofx_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Data
-        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Descrição (expands - twice as much space)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Descrição (expands)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # CPF
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Valor
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Banco
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Conta
 
         # Make Descrição column wider by setting minimum width
         header.setMinimumSectionSize(200)  # Minimum 200px for description
 
         self.ofx_table.setAlternatingRowColors(True)
         self.ofx_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.ofx_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.ofx_table.setSelectionMode(QAbstractItemView.MultiSelection)  # Allow multiple selection
         self.ofx_table.setSortingEnabled(True)  # Enable column sorting
+        self.ofx_table.itemSelectionChanged.connect(self.update_link_button_state)  # Update button when selection changes
         self.ofx_table.setStyleSheet("""
             QTableWidget {
                 gridline-color: #E0E0E0;
@@ -243,7 +256,50 @@ class UnmatchedTab(QWidget):
 
         return ofx_group
 
-    def _create_controls(self):
+    def _create_installments_table(self):
+        """Create unmatched credit card installments table"""
+        installments_group = QGroupBox("💳 Parcelas de Cartão Não Vinculadas")
+        installments_layout = QVBoxLayout()
+
+        self.installments_table = QTableWidget()
+        self.installments_table.setColumnCount(5)
+        self.installments_table.setHorizontalHeaderLabels([
+            'NSU/DOC', 'Data Prevista', 'Nome', 'CPF Cliente', 'Valor Líquido'
+        ])
+
+        # Configure table
+        header = self.installments_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # NSU
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Data
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Nome (expands)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # CPF
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Valor
+
+        self.installments_table.setAlternatingRowColors(True)
+        self.installments_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.installments_table.setSelectionMode(QAbstractItemView.MultiSelection)  # Allow multiple selection
+        self.installments_table.setSortingEnabled(True)  # Enable column sorting
+        self.installments_table.itemSelectionChanged.connect(self.update_link_button_state)  # Update button when selection changes
+        self.installments_table.setStyleSheet("""
+            QTableWidget {
+                gridline-color: #E0E0E0;
+                font-size: 10px;
+            }
+            QHeaderView::section {
+                background-color: #F5F5F5;
+                padding: 4px;
+                border: 1px solid #E0E0E0;
+                font-weight: bold;
+                font-size: 10px;
+            }
+        """)
+
+        installments_layout.addWidget(self.installments_table)
+        installments_group.setLayout(installments_layout)
+
+        return installments_group
+
+    def _create_controls_old(self):
         """Create manual matching controls"""
         controls_frame = QWidget()
         controls_frame.setStyleSheet("""
@@ -331,6 +387,73 @@ class UnmatchedTab(QWidget):
         self.installments_df = installments_df
         self.refresh_unmatched()
 
+    def filter_all_tables(self, search_text):
+        """Filter all tables based on unified search text (with debounce)"""
+        # Stop previous timer
+        self.unified_search_timer.stop()
+
+        # Store search text
+        self.pending_unified_search = search_text
+
+        # Start timer (300ms delay - waits for user to stop typing)
+        self.unified_search_timer.start(300)
+
+    def _execute_unified_filter(self):
+        """Actually execute the unified filter on all tables (called by timer)"""
+        search_text = self.pending_unified_search
+
+        # Filter invoices
+        if not search_text or self.unmatched_invoices.empty:
+            self.filtered_invoices = self.unmatched_invoices.copy()
+        else:
+            search_lower = search_text.lower()
+            mask = (
+                self.unmatched_invoices['numero'].astype(str).str.lower().str.contains(search_lower, na=False) |
+                self.unmatched_invoices['nome_tomador'].astype(str).str.lower().str.contains(search_lower, na=False) |
+                self.unmatched_invoices['cpf_cnpj'].astype(str).str.contains(search_lower, na=False) |
+                self.unmatched_invoices.get('cpf_cnpj_formatted', pd.Series([''] * len(self.unmatched_invoices))).astype(str).str.contains(search_lower, na=False)
+            )
+            self.filtered_invoices = self.unmatched_invoices[mask].copy()
+
+        # Filter OFX
+        if not search_text or self.unmatched_ofx.empty:
+            self.filtered_ofx = self.unmatched_ofx.copy()
+        else:
+            search_lower = search_text.lower()
+            mask = (
+                self.unmatched_ofx.get('descricao', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.lower().str.contains(search_lower, na=False) |
+                self.unmatched_ofx.get('cpf_cnpj', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.contains(search_lower, na=False) |
+                self.unmatched_ofx.get('banco', pd.Series([''] * len(self.unmatched_ofx))).astype(str).str.lower().str.contains(search_lower, na=False)
+            )
+            self.filtered_ofx = self.unmatched_ofx[mask].copy()
+
+        # Filter installments
+        if not search_text or self.unmatched_installments.empty:
+            self.filtered_installments = self.unmatched_installments.copy()
+        else:
+            search_lower = search_text.lower()
+            mask = (
+                self.unmatched_installments.get('nsu_doc', pd.Series([''] * len(self.unmatched_installments))).astype(str).str.contains(search_lower, na=False) |
+                self.unmatched_installments.get('nome', pd.Series([''] * len(self.unmatched_installments))).astype(str).str.lower().str.contains(search_lower, na=False) |
+                self.unmatched_installments.get('cpf_cliente', pd.Series([''] * len(self.unmatched_installments))).astype(str).str.contains(search_lower, na=False)
+            )
+            self.filtered_installments = self.unmatched_installments[mask].copy()
+
+        # Update all tables
+        self.update_invoices_table()
+        self.update_ofx_table()
+        self.update_installments_table()
+
+    def update_link_button_state(self):
+        """Enable/disable link button based on selections"""
+        invoice_selected = len(self.invoices_table.selectedItems()) > 0
+        ofx_selected = len(self.ofx_table.selectedItems()) > 0
+        installment_selected = len(self.installments_table.selectedItems()) > 0
+
+        # Enable button if: (1 invoice AND (1 OFX OR 1 installment))
+        can_link = invoice_selected and (ofx_selected or installment_selected)
+        self.btn_manual_match.setEnabled(can_link)
+
     def refresh_unmatched(self):
         """Refresh unmatched items lists"""
         # Find unmatched invoices
@@ -371,6 +494,7 @@ class UnmatchedTab(QWidget):
         # Update tables
         self.update_invoices_table()
         self.update_ofx_table()
+        self.update_installments_table()
         self.update_summary()
 
     def filter_invoices(self, search_text):
@@ -470,13 +594,6 @@ class UnmatchedTab(QWidget):
             status_item.setBackground(QColor(255, 200, 200))
             self.invoices_table.setItem(row_idx, 5, status_item)
 
-            # Motivo (placeholder - can be enhanced)
-            motivo = "Sem pagamento encontrado"
-            if row.get('cpf_cnpj', '') == '':
-                motivo = "CPF/CNPJ não identificado"
-
-            self.invoices_table.setItem(row_idx, 6, QTableWidgetItem(motivo))
-
         # Re-enable sorting
         self.invoices_table.setSortingEnabled(True)
 
@@ -518,12 +635,45 @@ class UnmatchedTab(QWidget):
             banco = row.get('banco', 'N/A')[:20]
             self.ofx_table.setItem(row_idx, 4, QTableWidgetItem(banco))
 
-            # Conta
-            conta = row.get('conta', 'N/A')[:15]
-            self.ofx_table.setItem(row_idx, 5, QTableWidgetItem(conta))
-
         # Re-enable sorting
         self.ofx_table.setSortingEnabled(True)
+
+    def update_installments_table(self):
+        """Update unmatched credit card installments table"""
+        df = self.filtered_installments  # Use filtered data
+
+        if df is None or df.empty:
+            self.installments_table.setRowCount(0)
+            return
+
+        # Disable sorting during update (major performance improvement)
+        self.installments_table.setSortingEnabled(False)
+
+        self.installments_table.setRowCount(len(df))
+
+        for row_idx, (idx, row) in enumerate(df.iterrows()):
+            # NSU/DOC
+            self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(row.get('nsu_doc', ''))))
+
+            # Data Prevista
+            self.installments_table.setItem(row_idx, 1, QTableWidgetItem(row.get('data_prevista', '')))
+
+            # Nome
+            nome = row.get('nome', '')
+            self.installments_table.setItem(row_idx, 2, QTableWidgetItem(nome))
+
+            # CPF Cliente
+            cpf = row.get('cpf_cliente', '-')
+            self.installments_table.setItem(row_idx, 3, QTableWidgetItem(cpf))
+
+            # Valor Líquido
+            valor_item = QTableWidgetItem(f"R$ {row.get('valor', 0):,.2f}")
+            valor_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            valor_item.setBackground(QColor(255, 248, 220))  # Light yellow for card
+            self.installments_table.setItem(row_idx, 4, valor_item)
+
+        # Re-enable sorting
+        self.installments_table.setSortingEnabled(True)
 
     def update_summary(self):
         """Update summary label"""
