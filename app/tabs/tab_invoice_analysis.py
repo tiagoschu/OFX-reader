@@ -29,6 +29,7 @@ class InvoiceAnalysisTab(QWidget):
         self.sales_df = None  # Credit card sales
         self.installments_df = None  # Credit card installments
         self.customer_summary_df = None
+        self.groups_df = None  # Customer groups with markup
         self.init_ui()
 
     def init_ui(self):
@@ -70,6 +71,10 @@ class InvoiceAnalysisTab(QWidget):
         # Detalhada tab
         self.detalhada_widget = self._create_detalhada_view()
         self.tab_widget.addTab(self.detalhada_widget, "📋 Visão Detalhada (por Mês)")
+
+        # Group analysis tab
+        self.group_widget = self._create_group_view()
+        self.tab_widget.addTab(self.group_widget, "👥 Análise por Grupo")
 
         main_layout.addWidget(self.tab_widget)
 
@@ -327,6 +332,103 @@ class InvoiceAnalysisTab(QWidget):
         widget.setLayout(layout)
         return widget
 
+    def _create_group_view(self):
+        """Create group analysis view"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+
+        # Info and controls
+        info_layout = QHBoxLayout()
+
+        info_label = QLabel("📊 Análise agregada por grupo de clientes com markup personalizado")
+        info_label.setStyleSheet("font-size: 11px; color: #666; font-style: italic;")
+        info_layout.addWidget(info_label)
+
+        info_layout.addStretch()
+
+        # Download template button
+        self.btn_download_template = QPushButton("📥 Baixar Modelo CSV")
+        self.btn_download_template.setStyleSheet("""
+            QPushButton {
+                background-color: #00897B;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #00796B;
+            }
+        """)
+        self.btn_download_template.clicked.connect(self.download_group_template)
+        info_layout.addWidget(self.btn_download_template)
+
+        # Import groups button
+        self.btn_import_groups = QPushButton("📂 Importar Grupos (CSV)")
+        self.btn_import_groups.setStyleSheet("""
+            QPushButton {
+                background-color: #1976D2;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #1565C0;
+            }
+        """)
+        self.btn_import_groups.clicked.connect(self.import_groups)
+        info_layout.addWidget(self.btn_import_groups)
+
+        layout.addLayout(info_layout)
+
+        # Group summary table
+        self.group_table = QTableWidget()
+        self.group_table.setColumnCount(7)
+        self.group_table.setHorizontalHeaderLabels([
+            "Grupo", "Qtd Clientes", "Qtd Notas", "Total Emitido",
+            "Total Recebido", "Total Pendente", "% Markup Grupo"
+        ])
+
+        # Table styling
+        header = self.group_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Group name
+        for i in range(1, 7):
+            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
+
+        self.group_table.setAlternatingRowColors(True)
+        self.group_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.group_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.group_table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #E0E0E0;
+                gridline-color: #E0E0E0;
+            }
+            QTableWidget::item {
+                padding: 5px;
+            }
+            QHeaderView::section {
+                background-color: #F5F5F5;
+                padding: 8px;
+                border: 1px solid #E0E0E0;
+                font-weight: bold;
+            }
+        """)
+
+        layout.addWidget(self.group_table)
+
+        # Status label
+        self.group_status_label = QLabel("💡 Importe um arquivo CSV de grupos para começar")
+        self.group_status_label.setStyleSheet("padding: 5px; font-size: 10px; color: #666; font-style: italic;")
+        layout.addWidget(self.group_status_label)
+
+        widget.setLayout(layout)
+        return widget
+
     def set_data(self, invoices_df, ofx_df):
         """Set data for analysis"""
         import time
@@ -389,6 +491,13 @@ class InvoiceAnalysisTab(QWidget):
         print(f"[ANALYSIS] Iniciando update_status - {time.strftime('%H:%M:%S')}")
         self.update_status()
         print(f"[ANALYSIS] update_status concluído em {time.time() - status_start:.2f}s")
+
+        # Update group analysis if groups are loaded
+        if self.groups_df is not None and not self.groups_df.empty:
+            group_start = time.time()
+            print(f"[ANALYSIS] Iniciando update_group_analysis - {time.strftime('%H:%M:%S')}")
+            self.update_group_analysis()
+            print(f"[ANALYSIS] update_group_analysis concluído em {time.time() - group_start:.2f}s")
 
         print(f"[ANALYSIS] refresh_analysis concluído - Tempo total: {time.time() - start_time:.2f}s")
 
@@ -958,3 +1067,181 @@ class InvoiceAnalysisTab(QWidget):
                     "Erro",
                     f"Erro ao exportar: {str(e)}"
                 )
+
+    def download_group_template(self):
+        """Download CSV template for groups"""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar Modelo CSV de Grupos",
+            "modelo_grupos.csv",
+            "CSV Files (*.csv)"
+        )
+
+        if file_path:
+            try:
+                # Create template DataFrame
+                template_df = pd.DataFrame({
+                    'nome': ['João Silva', 'Maria Santos', 'Pedro Costa'],
+                    'cpf': ['12345678900', '98765432100', '45678912300'],
+                    'grupo': ['Equipe A', 'Equipe A', 'Equipe B'],
+                    'markup_percent': [15.0, 15.0, 20.0]
+                })
+
+                template_df.to_csv(file_path, index=False, encoding='utf-8-sig')
+
+                QMessageBox.information(
+                    self,
+                    "Modelo Salvo",
+                    f"Modelo CSV salvo com sucesso!\n\n"
+                    f"Arquivo: {file_path}\n\n"
+                    f"Colunas obrigatórias:\n"
+                    f"• nome: Nome do cliente\n"
+                    f"• cpf: CPF do cliente (11 dígitos)\n"
+                    f"• grupo: Nome do grupo\n"
+                    f"• markup_percent: % de markup do grupo (ex: 15.0)"
+                )
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Erro ao salvar modelo: {str(e)}")
+
+    def import_groups(self):
+        """Import groups from CSV"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar Grupos CSV",
+            "",
+            "CSV Files (*.csv);;All Files (*.*)"
+        )
+
+        if file_path:
+            try:
+                # Read CSV
+                groups_df = pd.read_csv(file_path, encoding='utf-8-sig')
+
+                # Validate required columns
+                required_cols = ['nome', 'cpf', 'grupo', 'markup_percent']
+                missing_cols = [col for col in required_cols if col not in groups_df.columns]
+
+                if missing_cols:
+                    QMessageBox.warning(
+                        self,
+                        "Colunas Faltando",
+                        f"O arquivo CSV deve conter as colunas:\n{', '.join(required_cols)}\n\n"
+                        f"Colunas faltando: {', '.join(missing_cols)}"
+                    )
+                    return
+
+                # Clean CPF (remove formatting)
+                groups_df['cpf'] = groups_df['cpf'].astype(str).str.replace(r'[^\d]', '', regex=True)
+
+                # Validate data
+                if groups_df.empty:
+                    QMessageBox.warning(self, "Aviso", "O arquivo CSV está vazio!")
+                    return
+
+                # Store groups
+                self.groups_df = groups_df
+
+                # Update analysis
+                self.update_group_analysis()
+
+                self.group_status_label.setText(
+                    f"✓ {len(groups_df)} cliente(s) em {groups_df['grupo'].nunique()} grupo(s) importado(s)"
+                )
+                self.group_status_label.setStyleSheet("padding: 5px; font-size: 10px; color: #00897B; font-weight: bold;")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Erro ao importar grupos: {str(e)}")
+
+    def update_group_analysis(self):
+        """Update group analysis table"""
+        if self.groups_df is None or self.groups_df.empty:
+            self.group_table.setRowCount(0)
+            return
+
+        if self.customer_summary_df is None or self.customer_summary_df.empty:
+            QMessageBox.warning(
+                self,
+                "Sem Dados",
+                "Execute a análise sintética primeiro para visualizar análise por grupo."
+            )
+            return
+
+        try:
+            # Merge customer summary with groups
+            # Match by CPF
+            merged_df = self.customer_summary_df.copy()
+            merged_df['cpf_clean'] = merged_df['cpf_cnpj'].str.replace(r'[^\d]', '', regex=True)
+
+            # Join with groups
+            groups_lookup = self.groups_df.set_index('cpf')[['grupo', 'markup_percent']].to_dict('index')
+
+            merged_df['grupo'] = merged_df['cpf_clean'].map(
+                lambda cpf: groups_lookup.get(cpf, {}).get('grupo', 'Sem Grupo')
+            )
+            merged_df['markup_grupo'] = merged_df['cpf_clean'].map(
+                lambda cpf: groups_lookup.get(cpf, {}).get('markup_percent', 0.0)
+            )
+
+            # Group by grupo
+            group_summary = merged_df.groupby('grupo').agg({
+                'cpf_cnpj': 'count',  # Qtd clientes
+                'qtd_notas': 'sum',
+                'total_emitido': 'sum',
+                'total_recebido': 'sum',
+                'total_pendente': 'sum',
+                'markup_grupo': 'first'  # All same group should have same markup
+            }).reset_index()
+
+            group_summary.columns = [
+                'grupo', 'qtd_clientes', 'qtd_notas', 'total_emitido',
+                'total_recebido', 'total_pendente', 'markup_percent'
+            ]
+
+            # Sort by total emitted (descending)
+            group_summary = group_summary.sort_values('total_emitido', ascending=False)
+
+            # Update table
+            self.group_table.setRowCount(len(group_summary))
+            self.group_table.setSortingEnabled(False)
+
+            for row_idx, row in enumerate(group_summary.itertuples()):
+                # Grupo
+                grupo_item = QTableWidgetItem(row.grupo)
+                grupo_item.setFont(QFont("Arial", 10, QFont.Bold))
+                self.group_table.setItem(row_idx, 0, grupo_item)
+
+                # Qtd Clientes
+                self.group_table.setItem(row_idx, 1, QTableWidgetItem(str(int(row.qtd_clientes))))
+
+                # Qtd Notas
+                self.group_table.setItem(row_idx, 2, QTableWidgetItem(str(int(row.qtd_notas))))
+
+                # Total Emitido
+                emitido_item = QTableWidgetItem(f"R$ {row.total_emitido:,.2f}")
+                emitido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.group_table.setItem(row_idx, 3, emitido_item)
+
+                # Total Recebido
+                recebido_item = QTableWidgetItem(f"R$ {row.total_recebido:,.2f}")
+                recebido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                recebido_item.setBackground(QColor(200, 255, 200))  # Light green
+                self.group_table.setItem(row_idx, 4, recebido_item)
+
+                # Total Pendente
+                pendente_item = QTableWidgetItem(f"R$ {row.total_pendente:,.2f}")
+                pendente_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if row.total_pendente > 0:
+                    pendente_item.setBackground(QColor(255, 200, 200))  # Light red
+                self.group_table.setItem(row_idx, 5, pendente_item)
+
+                # % Markup Grupo
+                markup_item = QTableWidgetItem(f"{row.markup_percent:.1f}%")
+                markup_item.setTextAlignment(Qt.AlignCenter)
+                markup_item.setFont(QFont("Arial", 10, QFont.Bold))
+                markup_item.setBackground(QColor(220, 220, 255))  # Light blue
+                self.group_table.setItem(row_idx, 6, markup_item)
+
+            self.group_table.setSortingEnabled(True)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao atualizar análise por grupo: {str(e)}")
