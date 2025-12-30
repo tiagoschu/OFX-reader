@@ -386,29 +386,27 @@ class InvoiceAnalysisTab(QWidget):
 
         layout.addLayout(info_layout)
 
-        # Group summary table
-        self.group_table = QTableWidget()
-        self.group_table.setColumnCount(7)
-        self.group_table.setHorizontalHeaderLabels([
-            "Grupo", "Qtd Clientes", "Qtd Notas", "Total Emitido",
-            "Total Recebido", "Total Pendente", "% Markup Grupo"
+        # Group summary tree (expandable to show clients)
+        self.group_tree = QTreeWidget()
+        self.group_tree.setColumnCount(7)
+        self.group_tree.setHeaderLabels([
+            "Grupo / Cliente", "Qtd Notas", "Total Emitido",
+            "Total Recebido", "Total Pendente", "% Markup", "CPF"
         ])
 
-        # Table styling
-        header = self.group_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Group name
-        for i in range(1, 7):
+        # Tree styling
+        header = self.group_tree.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Group/Client name
+        for i in range(1, 6):
             header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
-        self.group_table.setAlternatingRowColors(True)
-        self.group_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.group_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.group_table.setStyleSheet("""
-            QTableWidget {
+        self.group_tree.setAlternatingRowColors(True)
+        self.group_tree.setStyleSheet("""
+            QTreeWidget {
                 border: 1px solid #E0E0E0;
-                gridline-color: #E0E0E0;
+                background: white;
             }
-            QTableWidget::item {
+            QTreeWidget::item {
                 padding: 5px;
             }
             QHeaderView::section {
@@ -417,9 +415,12 @@ class InvoiceAnalysisTab(QWidget):
                 border: 1px solid #E0E0E0;
                 font-weight: bold;
             }
+            QTreeWidget::item:selected {
+                background-color: #E3F2FD;
+            }
         """)
 
-        layout.addWidget(self.group_table)
+        layout.addWidget(self.group_tree)
 
         # Status label
         self.group_status_label = QLabel("💡 Importe um arquivo CSV de grupos para começar")
@@ -1153,9 +1154,10 @@ class InvoiceAnalysisTab(QWidget):
                 QMessageBox.critical(self, "Erro", f"Erro ao importar grupos: {str(e)}")
 
     def update_group_analysis(self):
-        """Update group analysis table"""
+        """Update group analysis tree (expandable to show clients)"""
+        self.group_tree.clear()
+
         if self.groups_df is None or self.groups_df.empty:
-            self.group_table.setRowCount(0)
             return
 
         if self.customer_summary_df is None or self.customer_summary_df.empty:
@@ -1182,66 +1184,74 @@ class InvoiceAnalysisTab(QWidget):
                 lambda cpf: groups_lookup.get(cpf, {}).get('markup_percent', 0.0)
             )
 
-            # Group by grupo
-            group_summary = merged_df.groupby('grupo').agg({
-                'cpf_cnpj': 'count',  # Qtd clientes
-                'qtd_notas': 'sum',
-                'total_emitido': 'sum',
-                'total_recebido': 'sum',
-                'total_pendente': 'sum',
-                'markup_grupo': 'first'  # All same group should have same markup
-            }).reset_index()
+            # Font for bold headers
+            bold_font = QFont()
+            bold_font.setBold(True)
+            bold_font.setPointSize(10)
 
-            group_summary.columns = [
-                'grupo', 'qtd_clientes', 'qtd_notas', 'total_emitido',
-                'total_recebido', 'total_pendente', 'markup_percent'
-            ]
+            # Group by grupo and iterate
+            for grupo_name, group_data in merged_df.groupby('grupo'):
+                # Calculate group totals
+                qtd_clientes = len(group_data)
+                qtd_notas = int(group_data['qtd_notas'].sum())
+                total_emitido = group_data['total_emitido'].sum()
+                total_recebido = group_data['total_recebido'].sum()
+                total_pendente = group_data['total_pendente'].sum()
+                markup_percent = group_data['markup_grupo'].iloc[0] if len(group_data) > 0 else 0.0
 
-            # Sort by total emitted (descending)
-            group_summary = group_summary.sort_values('total_emitido', ascending=False)
+                # Create parent item (group summary)
+                parent_item = QTreeWidgetItem(self.group_tree)
+                parent_item.setFont(0, bold_font)
 
-            # Update table
-            self.group_table.setRowCount(len(group_summary))
-            self.group_table.setSortingEnabled(False)
+                # Group name with client count
+                parent_item.setText(0, f"📁 {grupo_name} ({qtd_clientes} cliente(s))")
+                parent_item.setText(1, str(qtd_notas))
+                parent_item.setText(2, f"R$ {total_emitido:,.2f}")
+                parent_item.setText(3, f"R$ {total_recebido:,.2f}")
+                parent_item.setText(4, f"R$ {total_pendente:,.2f}")
+                parent_item.setText(5, f"{markup_percent:.1f}%")
+                parent_item.setText(6, "")  # No CPF for group
 
-            for row_idx, row in enumerate(group_summary.itertuples()):
-                # Grupo
-                grupo_item = QTableWidgetItem(row.grupo)
-                grupo_item.setFont(QFont("Arial", 10, QFont.Bold))
-                self.group_table.setItem(row_idx, 0, grupo_item)
+                # Style parent
+                parent_item.setTextAlignment(1, Qt.AlignRight)
+                parent_item.setTextAlignment(2, Qt.AlignRight)
+                parent_item.setTextAlignment(3, Qt.AlignRight)
+                parent_item.setTextAlignment(4, Qt.AlignRight)
+                parent_item.setTextAlignment(5, Qt.AlignCenter)
 
-                # Qtd Clientes
-                self.group_table.setItem(row_idx, 1, QTableWidgetItem(str(int(row.qtd_clientes))))
+                parent_item.setBackground(2, QColor(240, 240, 240))  # Light gray for totals
+                parent_item.setBackground(3, QColor(200, 255, 200))  # Light green for received
+                if total_pendente > 0:
+                    parent_item.setBackground(4, QColor(255, 200, 200))  # Light red for pending
+                parent_item.setBackground(5, QColor(220, 220, 255))  # Light blue for markup
 
-                # Qtd Notas
-                self.group_table.setItem(row_idx, 2, QTableWidgetItem(str(int(row.qtd_notas))))
+                # Add each client as a child
+                for idx, client in group_data.iterrows():
+                    client_item = QTreeWidgetItem(parent_item)
 
-                # Total Emitido
-                emitido_item = QTableWidgetItem(f"R$ {row.total_emitido:,.2f}")
-                emitido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.group_table.setItem(row_idx, 3, emitido_item)
+                    # Client name
+                    client_item.setText(0, f"  👤 {client['nome']}")
+                    client_item.setText(1, str(int(client['qtd_notas'])))
+                    client_item.setText(2, f"R$ {client['total_emitido']:,.2f}")
+                    client_item.setText(3, f"R$ {client['total_recebido']:,.2f}")
+                    client_item.setText(4, f"R$ {client['total_pendente']:,.2f}")
+                    client_item.setText(5, f"{client['markup_grupo']:.1f}%")
+                    client_item.setText(6, client['cpf_cnpj_fmt'])
 
-                # Total Recebido
-                recebido_item = QTableWidgetItem(f"R$ {row.total_recebido:,.2f}")
-                recebido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                recebido_item.setBackground(QColor(200, 255, 200))  # Light green
-                self.group_table.setItem(row_idx, 4, recebido_item)
+                    # Alignment
+                    client_item.setTextAlignment(1, Qt.AlignRight)
+                    client_item.setTextAlignment(2, Qt.AlignRight)
+                    client_item.setTextAlignment(3, Qt.AlignRight)
+                    client_item.setTextAlignment(4, Qt.AlignRight)
+                    client_item.setTextAlignment(5, Qt.AlignCenter)
 
-                # Total Pendente
-                pendente_item = QTableWidgetItem(f"R$ {row.total_pendente:,.2f}")
-                pendente_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                if row.total_pendente > 0:
-                    pendente_item.setBackground(QColor(255, 200, 200))  # Light red
-                self.group_table.setItem(row_idx, 5, pendente_item)
+                    # Highlight received/pending
+                    client_item.setBackground(3, QColor(230, 255, 230))  # Light green
+                    if client['total_pendente'] > 0:
+                        client_item.setBackground(4, QColor(255, 230, 230))  # Light red
 
-                # % Markup Grupo
-                markup_item = QTableWidgetItem(f"{row.markup_percent:.1f}%")
-                markup_item.setTextAlignment(Qt.AlignCenter)
-                markup_item.setFont(QFont("Arial", 10, QFont.Bold))
-                markup_item.setBackground(QColor(220, 220, 255))  # Light blue
-                self.group_table.setItem(row_idx, 6, markup_item)
-
-            self.group_table.setSortingEnabled(True)
+            # Expand all groups by default
+            self.group_tree.expandAll()
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao atualizar análise por grupo: {str(e)}")
