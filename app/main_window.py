@@ -24,6 +24,7 @@ from app.tabs.tab_invoices import InvoicesTab
 from app.tabs.tab_invoice_analysis import InvoiceAnalysisTab
 from app.tabs.tab_unmatched import UnmatchedTab
 from app.tabs.tab_credit_cards import CreditCardsTab
+from app.tabs.tab_match import MatchTab  # New centralized matching tab
 from core.project import Project
 from utils.constants import APP_NAME, VERSION, WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT
 from utils.config import config
@@ -69,6 +70,7 @@ class MainWindow(QMainWindow):
         self.tab_import = ImportTab()
         self.tab_invoices = InvoicesTab()
         self.tab_credit_cards = CreditCardsTab()
+        self.tab_match = MatchTab()
         self.tab_invoice_analysis = InvoiceAnalysisTab()
         self.tab_unmatched = UnmatchedTab()
         self.tab_analysis = AnalysisTab()
@@ -79,15 +81,16 @@ class MainWindow(QMainWindow):
         self.tab_export = ExportTab()
         self.tab_settings = ConfigTab()
 
-        # Add tabs (reorganized: import tabs at positions 1, 2, 3)
+        # Add tabs (reorganized: logical import workflow)
         self.tabs.addTab(self.tab_home, "🏠 Início")
-        self.tabs.addTab(self.tab_import, "📥 OFX Import")
-        self.tabs.addTab(self.tab_invoices, "📄 NFSe Import")
-        self.tabs.addTab(self.tab_credit_cards, "💳 Vendas Cartão")
-        self.tabs.addTab(self.tab_invoice_analysis, "🔗 Análise NFSe")
+        self.tabs.addTab(self.tab_import, "📥 1. OFX Import")
+        self.tabs.addTab(self.tab_credit_cards, "💳 2. CSV Cartão Import")
+        self.tabs.addTab(self.tab_invoices, "📄 3. NFSe Import")
+        self.tabs.addTab(self.tab_match, "🔗 4. Vincular Transações")
+        self.tabs.addTab(self.tab_invoice_analysis, "📊 Análise NFSe")
         self.tabs.addTab(self.tab_unmatched, "🔍 Não Vinculados")
-        self.tabs.addTab(self.tab_analysis, "📊 Análises")
-        self.tabs.addTab(self.tab_charts, "📈 Gráficos")
+        self.tabs.addTab(self.tab_analysis, "📈 Análises")
+        self.tabs.addTab(self.tab_charts, "📉 Gráficos")
         self.tabs.addTab(self.tab_categories, "🎯 Categorias")
         self.tabs.addTab(self.tab_reports, "📋 Relatórios")
         self.tabs.addTab(self.tab_dre, "💼 DRE")
@@ -101,6 +104,11 @@ class MainWindow(QMainWindow):
         self.tab_invoices.match_requested.connect(self.on_match_requested)
         self.tab_credit_cards.cards_loaded.connect(self.on_cards_loaded)
         self.tab_credit_cards.match_requested.connect(self.on_match_requested)
+
+        # Connect data to Match tab for centralized matching
+        self.tab_import.data_processed.connect(lambda df, processor: self.tab_match.set_data(ofx_df=df))
+        self.tab_invoices.invoices_loaded.connect(lambda df: self.tab_match.set_data(invoices_df=df))
+        self.tab_credit_cards.cards_loaded.connect(lambda sales, inst: self.tab_match.set_data(installments_df=inst))
 
         # Set central widget
         self.setCentralWidget(self.tabs)
