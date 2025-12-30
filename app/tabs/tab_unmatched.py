@@ -20,10 +20,13 @@ class UnmatchedTab(QWidget):
         super().__init__()
         self.invoices_df = None
         self.ofx_df = None
+        self.installments_df = None  # Credit card installments
         self.unmatched_invoices = pd.DataFrame()
         self.unmatched_ofx = pd.DataFrame()
+        self.unmatched_installments = pd.DataFrame()  # Unmatched credit card installments
         self.filtered_invoices = pd.DataFrame()  # For search filtering
         self.filtered_ofx = pd.DataFrame()  # For search filtering
+        self.filtered_installments = pd.DataFrame()  # For search filtering
         self.init_ui()
 
     def init_ui(self):
@@ -305,6 +308,16 @@ class UnmatchedTab(QWidget):
         self.ofx_df = ofx_df
         self.refresh_unmatched()
 
+    def set_card_data(self, installments_df):
+        """
+        Set credit card installments data
+
+        Args:
+            installments_df: DataFrame with credit card installments
+        """
+        self.installments_df = installments_df
+        self.refresh_unmatched()
+
     def refresh_unmatched(self):
         """Refresh unmatched items lists"""
         # Find unmatched invoices
@@ -329,9 +342,18 @@ class UnmatchedTab(QWidget):
         else:
             self.unmatched_ofx = pd.DataFrame()
 
+        # Find unmatched credit card installments
+        if self.installments_df is not None and not self.installments_df.empty:
+            self.unmatched_installments = self.installments_df[
+                self.installments_df['status_vinculacao'] == 'Pendente'
+            ].copy()
+        else:
+            self.unmatched_installments = pd.DataFrame()
+
         # Initialize filtered data (same as unmatched initially)
         self.filtered_invoices = self.unmatched_invoices.copy()
         self.filtered_ofx = self.unmatched_ofx.copy()
+        self.filtered_installments = self.unmatched_installments.copy()
 
         # Update tables
         self.update_invoices_table()
@@ -456,12 +478,15 @@ class UnmatchedTab(QWidget):
         """Update summary label"""
         total_invoices = len(self.unmatched_invoices) if not self.unmatched_invoices.empty else 0
         total_ofx = len(self.unmatched_ofx) if not self.unmatched_ofx.empty else 0
+        total_installments = len(self.unmatched_installments) if not self.unmatched_installments.empty else 0
 
         valor_invoices = self.unmatched_invoices['valor_liquido'].sum() if not self.unmatched_invoices.empty else 0
         valor_ofx = self.unmatched_ofx['valor'].sum() if not self.unmatched_ofx.empty else 0
+        valor_installments = self.unmatched_installments['valor'].sum() if not self.unmatched_installments.empty else 0
 
         self.summary_label.setText(
             f"📄 Notas não vinculadas: {total_invoices} (R$ {valor_invoices:,.2f}) | "
+            f"💳 Parcelas cartão não vinculadas: {total_installments} (R$ {valor_installments:,.2f}) | "
             f"💰 Pagamentos não vinculados: {total_ofx} (R$ {valor_ofx:,.2f})"
         )
 

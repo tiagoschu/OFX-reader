@@ -226,7 +226,8 @@ class MainWindow(QMainWindow):
         # Update invoice analysis tab with credit card sales data
         self.tab_invoice_analysis.set_card_data(sales_df, installments_df)
 
-        # TODO: Update unmatched tab to show unmatched installments
+        # Update unmatched tab to show unmatched installments
+        self.tab_unmatched.set_card_data(installments_df)
 
         self.statusBar().showMessage(
             f"{len(sales_df)} venda(s) e {len(installments_df)} parcela(s) de cartão carregadas",
