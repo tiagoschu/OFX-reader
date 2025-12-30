@@ -563,12 +563,22 @@ class UnmatchedTab(QWidget):
             self.invoices_table.setRowCount(0)
             return
 
-        # Disable sorting during update (major performance improvement)
+        # Limit display to first 1000 rows for performance
+        MAX_ROWS = 1000
+        total_rows = len(df)
+        display_rows = min(total_rows, MAX_ROWS)
+        df_display = df.head(MAX_ROWS)
+
+        # Disable sorting and UI updates during population (major performance improvement)
         self.invoices_table.setSortingEnabled(False)
+        self.invoices_table.setUpdatesEnabled(False)
 
-        self.invoices_table.setRowCount(len(df))
+        self.invoices_table.setRowCount(display_rows)
 
-        for row_idx, (idx, row) in enumerate(df.iterrows()):
+        # Use iloc for faster iteration (much faster than iterrows)
+        for row_idx in range(display_rows):
+            row = df_display.iloc[row_idx]
+
             # Número
             self.invoices_table.setItem(row_idx, 0, QTableWidgetItem(str(row['numero'])))
 
@@ -576,11 +586,12 @@ class UnmatchedTab(QWidget):
             self.invoices_table.setItem(row_idx, 1, QTableWidgetItem(row['data']))
 
             # Cliente
-            self.invoices_table.setItem(row_idx, 2, QTableWidgetItem(row['nome_tomador'][:30]))
+            nome = str(row['nome_tomador'])[:30]
+            self.invoices_table.setItem(row_idx, 2, QTableWidgetItem(nome))
 
             # CPF/CNPJ
             cpf_cnpj = row.get('cpf_cnpj_formatted', row.get('cpf_cnpj', ''))
-            self.invoices_table.setItem(row_idx, 3, QTableWidgetItem(cpf_cnpj))
+            self.invoices_table.setItem(row_idx, 3, QTableWidgetItem(str(cpf_cnpj)))
 
             # Valor
             valor_item = QTableWidgetItem(f"R$ {row['valor_liquido']:,.2f}")
@@ -594,8 +605,13 @@ class UnmatchedTab(QWidget):
             status_item.setBackground(QColor(255, 200, 200))
             self.invoices_table.setItem(row_idx, 5, status_item)
 
-        # Re-enable sorting
+        # Re-enable UI updates and sorting
+        self.invoices_table.setUpdatesEnabled(True)
         self.invoices_table.setSortingEnabled(True)
+
+        # Show warning if data was truncated
+        if total_rows > MAX_ROWS:
+            print(f"[PERFORMANCE] Mostrando {MAX_ROWS} de {total_rows} notas não vinculadas (use filtro para refinar)")
 
     def update_ofx_table(self):
         """Update unmatched OFX transactions table"""
@@ -605,25 +621,35 @@ class UnmatchedTab(QWidget):
             self.ofx_table.setRowCount(0)
             return
 
-        # Disable sorting during update (major performance improvement)
+        # Limit display to first 1000 rows for performance
+        MAX_ROWS = 1000
+        total_rows = len(df)
+        display_rows = min(total_rows, MAX_ROWS)
+        df_display = df.head(MAX_ROWS)
+
+        # Disable sorting and UI updates during population (major performance improvement)
         self.ofx_table.setSortingEnabled(False)
+        self.ofx_table.setUpdatesEnabled(False)
 
-        self.ofx_table.setRowCount(len(df))
+        self.ofx_table.setRowCount(display_rows)
 
-        for row_idx, (idx, row) in enumerate(df.iterrows()):
+        # Use iloc for faster iteration (much faster than iterrows)
+        for row_idx in range(display_rows):
+            row = df_display.iloc[row_idx]
+
             # Data
-            self.ofx_table.setItem(row_idx, 0, QTableWidgetItem(row['data']))
+            self.ofx_table.setItem(row_idx, 0, QTableWidgetItem(str(row['data'])))
 
             # Descrição - mostrar mais caracteres (100 em vez de 50)
             descricao = row.get('descricao', row.get('memo', ''))
             # Não truncar - deixar a coluna Stretch mostrar tudo
-            self.ofx_table.setItem(row_idx, 1, QTableWidgetItem(descricao))
+            self.ofx_table.setItem(row_idx, 1, QTableWidgetItem(str(descricao)))
 
             # CPF/CNPJ
             cpf_cnpj = row.get('cpf_cnpj', '')
             if not cpf_cnpj:
                 cpf_cnpj = '-'
-            self.ofx_table.setItem(row_idx, 2, QTableWidgetItem(cpf_cnpj))
+            self.ofx_table.setItem(row_idx, 2, QTableWidgetItem(str(cpf_cnpj)))
 
             # Valor
             valor_item = QTableWidgetItem(f"R$ {row['valor']:,.2f}")
@@ -632,11 +658,16 @@ class UnmatchedTab(QWidget):
             self.ofx_table.setItem(row_idx, 3, valor_item)
 
             # Banco
-            banco = row.get('banco', 'N/A')[:20]
+            banco = str(row.get('banco', 'N/A'))[:20]
             self.ofx_table.setItem(row_idx, 4, QTableWidgetItem(banco))
 
-        # Re-enable sorting
+        # Re-enable UI updates and sorting
+        self.ofx_table.setUpdatesEnabled(True)
         self.ofx_table.setSortingEnabled(True)
+
+        # Show warning if data was truncated
+        if total_rows > MAX_ROWS:
+            print(f"[PERFORMANCE] Mostrando {MAX_ROWS} de {total_rows} transações OFX não vinculadas (use filtro para refinar)")
 
     def update_installments_table(self):
         """Update unmatched credit card installments table"""
@@ -646,12 +677,22 @@ class UnmatchedTab(QWidget):
             self.installments_table.setRowCount(0)
             return
 
-        # Disable sorting during update (major performance improvement)
+        # Limit display to first 1000 rows for performance
+        MAX_ROWS = 1000
+        total_rows = len(df)
+        display_rows = min(total_rows, MAX_ROWS)
+        df_display = df.head(MAX_ROWS)
+
+        # Disable sorting and UI updates during population (major performance improvement)
         self.installments_table.setSortingEnabled(False)
+        self.installments_table.setUpdatesEnabled(False)
 
-        self.installments_table.setRowCount(len(df))
+        self.installments_table.setRowCount(display_rows)
 
-        for row_idx, (idx, row) in enumerate(df.iterrows()):
+        # Use iloc for faster iteration (much faster than iterrows)
+        for row_idx in range(display_rows):
+            row = df_display.iloc[row_idx]
+
             # NSU/DOC
             self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(row.get('nsu_doc', ''))))
 
@@ -678,8 +719,13 @@ class UnmatchedTab(QWidget):
             valor_item.setBackground(QColor(255, 248, 220))  # Light yellow for card
             self.installments_table.setItem(row_idx, 4, valor_item)
 
-        # Re-enable sorting
+        # Re-enable UI updates and sorting
+        self.installments_table.setUpdatesEnabled(True)
         self.installments_table.setSortingEnabled(True)
+
+        # Show warning if data was truncated
+        if total_rows > MAX_ROWS:
+            print(f"[PERFORMANCE] Mostrando {MAX_ROWS} de {total_rows} parcelas de cartão não vinculadas (use filtro para refinar)")
 
     def update_summary(self):
         """Update summary label"""
