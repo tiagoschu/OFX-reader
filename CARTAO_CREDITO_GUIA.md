@@ -27,7 +27,9 @@ A estrutura de abas foi reorganizada para agrupar as importações:
 
 Você pode baixar o modelo CSV diretamente na interface:
 - Clique no botão **"📋 Baixar Modelo CSV"** na aba **💳 Vendas Cartão**
-- Ou copie o arquivo `templates/vendas_cartao_modelo.csv`
+- O template será gerado automaticamente com 3 exemplos de vendas
+- Escolha onde salvar o arquivo CSV
+- A mensagem de confirmação mostrará todos os campos obrigatórios
 
 ### Campos Obrigatórios (*)
 
