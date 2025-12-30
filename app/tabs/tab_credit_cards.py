@@ -217,7 +217,7 @@ class CreditCardsTab(QWidget):
 
         self.sales_tree = QTreeWidget()
         self.sales_tree.setHeaderLabels([
-            'Venda ID', 'Data Venda', 'Estabelecimento', 'Bandeira',
+            'NSU/DOC', 'CPF/CNPJ', 'Nome', 'Data Venda', 'Bandeira',
             'Parcelas', 'Valor Bruto', 'Valor Líquido', 'Adquirente'
         ])
 
@@ -228,14 +228,15 @@ class CreditCardsTab(QWidget):
         # Column widths
         header = self.sales_tree.header()
         header.setStretchLastSection(False)
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Data
-        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Estabelecimento
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Bandeira
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Parcelas
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Valor Bruto
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Valor Líquido
-        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Adquirente
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # NSU/DOC
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # CPF/CNPJ
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Nome
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Data
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Bandeira
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Parcelas
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Valor Bruto
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Valor Líquido
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # Adquirente
 
         layout.addWidget(self.sales_tree)
         group.setLayout(layout)
@@ -249,7 +250,7 @@ class CreditCardsTab(QWidget):
         self.installments_table = QTableWidget()
         self.installments_table.setColumnCount(9)
         self.installments_table.setHorizontalHeaderLabels([
-            'Venda ID', 'Parcela', 'Data Prevista', 'Valor', 'Status',
+            'NSU/DOC', 'Parcela', 'Data Prevista', 'Valor', 'Status',
             'OFX Data', 'OFX Valor', 'Dif. Dias', 'Dif. Valor'
         ])
 
@@ -413,9 +414,10 @@ class CreditCardsTab(QWidget):
 
         for _, sale in self.sales_df.iterrows():
             sale_item = QTreeWidgetItem([
-                str(sale.get('id', '')),
+                str(sale.get('nsu_doc', '')),
+                str(sale.get('cpf_cnpj', '')),
+                str(sale.get('nome', '')),
                 str(sale.get('data_venda', ''))[:10] if pd.notna(sale.get('data_venda')) else '',
-                str(sale.get('estabelecimento', '')),
                 str(sale.get('bandeira', '')),
                 f"{sale.get('qtd_parcelas', 0)}x",
                 f"R$ {sale.get('valor_bruto', 0):,.2f}",
@@ -470,8 +472,8 @@ class CreditCardsTab(QWidget):
         self.installments_table.setRowCount(len(self.installments_df))
 
         for row_idx, (_, inst) in enumerate(self.installments_df.iterrows()):
-            # Venda ID
-            self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(inst.get('venda_id', ''))))
+            # NSU/DOC
+            self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(inst.get('nsu_doc', ''))))
 
             # Parcela
             parcela_text = f"{inst.get('numero_parcela', 0)}/{inst.get('total_parcelas', 0)}"

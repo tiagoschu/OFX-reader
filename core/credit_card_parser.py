@@ -125,10 +125,12 @@ class CreditCardParser:
 
         sale = {
             'id': f"{row.get('Código da venda', f'VENDA_{idx}')}",
+            'nsu_doc': row.get('NSU/DOC', ''),
+            'cpf_cnpj': cpf_cnpj,  # CPF/CNPJ do estabelecimento
+            'nome': row.get('Nome', ''),  # Nome do cliente
             'data_venda': data_venda,
             'hora_venda': row.get('Hora da venda', ''),
             'estabelecimento': row.get('Estabelecimento', ''),
-            'cpf_cnpj_estabelecimento': cpf_cnpj,
             'forma_pagamento': row.get('Forma de pagamento', ''),
             'qtd_parcelas': qtd_parcelas,
             'bandeira': row.get('Bandeira', ''),
@@ -145,13 +147,11 @@ class CreditCardParser:
             'data_lancamento': data_lancamento,
             'data_primeiro_pagamento': data_primeiro_pagamento,
             'codigo_autorizacao': row.get('Código de autorização', ''),
-            'nsu_doc': row.get('NSU/DOC', ''),
             'codigo_venda': row.get('Código da venda', ''),
             'tid': row.get('TID', ''),
             'origem_cartao': row.get('Origem do cartão', ''),
-            'nome_cliente': row.get('Nome', ''),
-            'email_cliente': row.get('Email', ''),
-            'telefone_cliente': row.get('Telefone', ''),
+            'email': row.get('Email', ''),
+            'telefone': row.get('Telefone', ''),
             'cpf_cliente': cpf_cliente,
             'adquirente': row.get('Adquirente', 'Não especificado')
         }
@@ -195,15 +195,16 @@ class CreditCardParser:
 
             installment = {
                 'venda_id': sale['id'],
+                'nsu_doc': sale['nsu_doc'],
+                'cpf_cnpj': sale['cpf_cnpj'],
+                'nome': sale['nome'],
                 'numero_parcela': i + 1,
                 'total_parcelas': qtd_parcelas,
                 'data_prevista': data_parcela,
                 'valor': valor_parcela_atual,
-                'cpf_cnpj_estabelecimento': sale['cpf_cnpj_estabelecimento'],
                 'estabelecimento': sale['estabelecimento'],
                 'bandeira': sale['bandeira'],
                 'adquirente': sale['adquirente'],
-                'nsu_doc': sale['nsu_doc'],
                 'status_vinculacao': 'Pendente',  # To be updated by matcher
                 'ofx_id': None  # To be filled by matcher
             }
