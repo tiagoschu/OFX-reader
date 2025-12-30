@@ -485,9 +485,9 @@ class InvoiceAnalysisTab(QWidget):
 
         # Add credit card sales section
         if self.installments_df is not None and not self.installments_df.empty:
-            # Get customer's credit card installments
+            # Get customer's credit card installments (match by CPF do cliente)
             customer_installments = self.installments_df[
-                self.installments_df['cpf_cnpj'] == cpf_cnpj
+                self.installments_df['cpf_cliente'] == cpf_cnpj
             ].copy()
 
             if not customer_installments.empty:

@@ -196,7 +196,8 @@ class CreditCardParser:
             installment = {
                 'venda_id': sale['id'],
                 'nsu_doc': sale['nsu_doc'],
-                'cpf_cnpj': sale['cpf_cnpj'],
+                'cpf_cnpj': sale['cpf_cnpj'],  # CPF/CNPJ do estabelecimento (para matching interno)
+                'cpf_cliente': sale['cpf_cliente'],  # CPF do cliente (para análise sintética)
                 'nome': sale['nome'],
                 'numero_parcela': i + 1,
                 'total_parcelas': qtd_parcelas,

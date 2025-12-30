@@ -217,7 +217,7 @@ class CreditCardsTab(QWidget):
 
         self.sales_tree = QTreeWidget()
         self.sales_tree.setHeaderLabels([
-            'NSU/DOC', 'CPF/CNPJ', 'Nome', 'Data Venda', 'Bandeira',
+            'NSU/DOC', 'CPF Cliente', 'Nome', 'Data Venda', 'Bandeira',
             'Parcelas', 'Valor Bruto', 'Valor Líquido', 'Adquirente'
         ])
 
@@ -248,9 +248,9 @@ class CreditCardsTab(QWidget):
         layout = QVBoxLayout()
 
         self.installments_table = QTableWidget()
-        self.installments_table.setColumnCount(9)
+        self.installments_table.setColumnCount(10)
         self.installments_table.setHorizontalHeaderLabels([
-            'NSU/DOC', 'Parcela', 'Data Prevista', 'Valor', 'Status',
+            'NSU/DOC', 'CPF Cliente', 'Parcela', 'Data Prevista', 'Valor', 'Status',
             'OFX Data', 'OFX Valor', 'Dif. Dias', 'Dif. Valor'
         ])
 
@@ -263,15 +263,16 @@ class CreditCardsTab(QWidget):
         # Column widths
         header = self.installments_table.horizontalHeader()
         header.setStretchLastSection(True)
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # Venda ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Parcela
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Data
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Valor
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Status
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # OFX Data
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # OFX Valor
-        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # Dif. Dias
-        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # Dif. Valor
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # NSU/DOC
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # CPF Cliente
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Parcela
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Data
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # Valor
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Status
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # OFX Data
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)  # OFX Valor
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)  # Dif. Dias
+        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # Dif. Valor
 
         layout.addWidget(self.installments_table)
         group.setLayout(layout)
@@ -415,7 +416,7 @@ class CreditCardsTab(QWidget):
         for _, sale in self.sales_df.iterrows():
             sale_item = QTreeWidgetItem([
                 str(sale.get('nsu_doc', '')),
-                str(sale.get('cpf_cnpj', '')),
+                str(sale.get('cpf_cliente', '')),  # CPF do cliente, não do estabelecimento
                 str(sale.get('nome', '')),
                 str(sale.get('data_venda', ''))[:10] if pd.notna(sale.get('data_venda')) else '',
                 str(sale.get('bandeira', '')),
@@ -475,18 +476,21 @@ class CreditCardsTab(QWidget):
             # NSU/DOC
             self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(inst.get('nsu_doc', ''))))
 
+            # CPF Cliente
+            self.installments_table.setItem(row_idx, 1, QTableWidgetItem(str(inst.get('cpf_cliente', ''))))
+
             # Parcela
             parcela_text = f"{inst.get('numero_parcela', 0)}/{inst.get('total_parcelas', 0)}"
-            self.installments_table.setItem(row_idx, 1, QTableWidgetItem(parcela_text))
+            self.installments_table.setItem(row_idx, 2, QTableWidgetItem(parcela_text))
 
             # Data Prevista
             data_prevista = str(inst.get('data_prevista', ''))[:10] if pd.notna(inst.get('data_prevista')) else ''
-            self.installments_table.setItem(row_idx, 2, QTableWidgetItem(data_prevista))
+            self.installments_table.setItem(row_idx, 3, QTableWidgetItem(data_prevista))
 
             # Valor
             valor_item = QTableWidgetItem(f"R$ {inst.get('valor', 0):,.2f}")
             valor_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.installments_table.setItem(row_idx, 3, valor_item)
+            self.installments_table.setItem(row_idx, 4, valor_item)
 
             # Status
             status = inst.get('status_vinculacao', 'Pendente')
@@ -495,30 +499,30 @@ class CreditCardsTab(QWidget):
                 status_item.setForeground(QColor(0, 128, 0))
             else:
                 status_item.setForeground(QColor(200, 100, 0))
-            self.installments_table.setItem(row_idx, 4, status_item)
+            self.installments_table.setItem(row_idx, 5, status_item)
 
             # OFX Data
             ofx_data = str(inst.get('ofx_data', '')) if pd.notna(inst.get('ofx_data')) else ''
-            self.installments_table.setItem(row_idx, 5, QTableWidgetItem(ofx_data))
+            self.installments_table.setItem(row_idx, 6, QTableWidgetItem(ofx_data))
 
             # OFX Valor
             ofx_valor = inst.get('ofx_valor', None)
             ofx_valor_text = f"R$ {ofx_valor:,.2f}" if pd.notna(ofx_valor) else ''
             ofx_valor_item = QTableWidgetItem(ofx_valor_text)
             ofx_valor_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.installments_table.setItem(row_idx, 6, ofx_valor_item)
+            self.installments_table.setItem(row_idx, 7, ofx_valor_item)
 
             # Diferença Dias
             dif_dias = inst.get('diferenca_dias', None)
             dif_dias_text = str(int(dif_dias)) if pd.notna(dif_dias) else ''
-            self.installments_table.setItem(row_idx, 7, QTableWidgetItem(dif_dias_text))
+            self.installments_table.setItem(row_idx, 8, QTableWidgetItem(dif_dias_text))
 
             # Diferença Valor
             dif_valor = inst.get('diferenca_valor', None)
             dif_valor_text = f"R$ {dif_valor:.2f}" if pd.notna(dif_valor) else ''
             dif_valor_item = QTableWidgetItem(dif_valor_text)
             dif_valor_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.installments_table.setItem(row_idx, 8, dif_valor_item)
+            self.installments_table.setItem(row_idx, 9, dif_valor_item)
 
         # Re-enable sorting
         self.installments_table.setSortingEnabled(True)
