@@ -509,12 +509,28 @@ class InvoiceMatcher:
         summary = invoices_df.groupby('cpf_cnpj').agg({
             'numero': 'count',
             'valor_liquido': 'sum',
-            'valor_matched': 'sum',
             'nome_tomador': 'first',
             'cpf_cnpj_formatted': 'first'
         }).reset_index()
 
-        summary.columns = ['cpf_cnpj', 'qtd_notas', 'total_emitido', 'total_recebido', 'nome', 'cpf_cnpj_fmt']
+        summary.columns = ['cpf_cnpj', 'qtd_notas', 'total_emitido', 'nome', 'cpf_cnpj_fmt']
+
+        # Calculate total_recebido from UNIQUE OFX transactions (credits only)
+        # This prevents counting the same OFX transaction multiple times
+        if ofx_df is not None and not ofx_df.empty:
+            # Get only credits (receipts)
+            ofx_credits = ofx_df[ofx_df['valor'] > 0].copy()
+
+            # For each customer, sum unique OFX values
+            total_recebido_list = []
+            for cpf_cnpj in summary['cpf_cnpj']:
+                customer_ofx = ofx_credits[ofx_credits['cpf_cnpj'] == cpf_cnpj]
+                total_recebido = customer_ofx['valor'].sum() if not customer_ofx.empty else 0.0
+                total_recebido_list.append(total_recebido)
+
+            summary['total_recebido'] = total_recebido_list
+        else:
+            summary['total_recebido'] = 0.0
 
         # Calculate pending and markup percentage
         summary['total_pendente'] = summary['total_emitido'] - summary['total_recebido']
