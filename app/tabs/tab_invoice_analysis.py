@@ -29,7 +29,6 @@ class InvoiceAnalysisTab(QWidget):
         self.sales_df = None  # Credit card sales
         self.installments_df = None  # Credit card installments
         self.customer_summary_df = None
-        self.monthly_summary_df = None
         self.init_ui()
 
     def init_ui(self):
@@ -234,37 +233,38 @@ class InvoiceAnalysisTab(QWidget):
         return widget
 
     def _create_detalhada_view(self):
-        """Create detalhada view (by month)"""
+        """Create detalhada view (by month/day with transactions)"""
         widget = QWidget()
         layout = QVBoxLayout()
 
         # Info label
-        info_label = QLabel("Resumo mensal - Notas emitidas vs recebimentos por mês")
+        info_label = QLabel("Visão Detalhada - Clique no '+' para expandir mês e ver recebimentos por dia (OFX + Cartão)")
         info_label.setStyleSheet("font-size: 10px; color: #666; padding: 5px;")
         layout.addWidget(info_label)
 
-        # Table
-        self.detalhada_table = QTableWidget()
-        self.detalhada_table.setColumnCount(6)
-        self.detalhada_table.setHorizontalHeaderLabels([
-            'Mês', 'Qtd Notas', 'Total Emitido (R$)',
-            'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
+        # Tree widget (replaces table)
+        self.detalhada_tree = QTreeWidget()
+        self.detalhada_tree.setColumnCount(7)
+        self.detalhada_tree.setHeaderLabels([
+            'Data/Descrição', 'Tipo', 'CPF/CNPJ Cliente', 'Valor (R$)',
+            'Nota Vinculada', 'Status', 'Observações'
         ])
 
-        # Configure table
-        header = self.detalhada_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        # Configure tree
+        header = self.detalhada_tree.header()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.Stretch)
 
-        self.detalhada_table.setAlternatingRowColors(True)
-        self.detalhada_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.detalhada_table.setSortingEnabled(True)  # Enable column sorting
-        self.detalhada_table.setStyleSheet("""
-            QTableWidget {
+        self.detalhada_tree.setAlternatingRowColors(True)
+        self.detalhada_tree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.detalhada_tree.setSortingEnabled(False)  # Disable sorting to maintain chronological order
+        self.detalhada_tree.setStyleSheet("""
+            QTreeWidget {
                 gridline-color: #E0E0E0;
                 font-size: 10px;
             }
@@ -277,7 +277,7 @@ class InvoiceAnalysisTab(QWidget):
             }
         """)
 
-        layout.addWidget(self.detalhada_table)
+        layout.addWidget(self.detalhada_tree)
 
         widget.setLayout(layout)
         return widget
@@ -338,12 +338,7 @@ class InvoiceAnalysisTab(QWidget):
         self.update_sintetica_table()
         print(f"[ANALYSIS] update_sintetica_table concluído em {time.time() - update_sint_start:.2f}s")
 
-        # Monthly summary
-        monthly_start = time.time()
-        print(f"[ANALYSIS] Iniciando analyze_by_month - {time.strftime('%H:%M:%S')}")
-        self.monthly_summary_df = matcher.analyze_by_month(self.invoices_df, self.ofx_df)
-        print(f"[ANALYSIS] analyze_by_month concluído em {time.time() - monthly_start:.2f}s")
-
+        # Detalhada view (now uses OFX and installments directly, no monthly summary needed)
         update_det_start = time.time()
         print(f"[ANALYSIS] Iniciando update_detalhada_table - {time.strftime('%H:%M:%S')}")
         self.update_detalhada_table()
@@ -616,64 +611,182 @@ class InvoiceAnalysisTab(QWidget):
                     ofx_item.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
 
     def update_detalhada_table(self):
-        """Update detalhada table"""
-        df = self.monthly_summary_df
+        """Update detalhada tree with month > day > transactions structure"""
+        import time
+        start_time = time.time()
+        print(f"[DETALHADA-TREE] update_detalhada_table iniciado - {time.strftime('%H:%M:%S')}")
 
-        if df is None or df.empty:
-            self.detalhada_table.setRowCount(0)
+        self.detalhada_tree.clear()
+
+        # Check if we have any data
+        has_ofx = self.ofx_df is not None and not self.ofx_df.empty
+        has_cards = self.installments_df is not None and not self.installments_df.empty
+
+        if not has_ofx and not has_cards:
             return
 
-        self.detalhada_table.setRowCount(len(df))
+        # Font for headers
+        bold_font = QFont()
+        bold_font.setBold(True)
 
-        for row_idx, (idx, row) in enumerate(df.iterrows()):
-            # Mês
-            self.detalhada_table.setItem(row_idx, 0, QTableWidgetItem(row['mes']))
+        # Collect all transactions (OFX + Card installments)
+        all_transactions = []
 
-            # Qtd Notas
-            qtd_item = QTableWidgetItem(str(row['qtd_notas']))
-            qtd_item.setData(Qt.UserRole, int(row['qtd_notas']))  # For numeric sorting
-            qtd_item.setTextAlignment(Qt.AlignCenter)
-            self.detalhada_table.setItem(row_idx, 1, qtd_item)
+        # 1. Add OFX transactions (filtered)
+        if has_ofx:
+            ofx_filtered = self._filter_ofx_for_detalhada(self.ofx_df)
+            for idx, ofx in ofx_filtered.iterrows():
+                all_transactions.append({
+                    'data_dt': ofx['data_dt'],
+                    'data_str': ofx['data'],
+                    'tipo': 'OFX',
+                    'cpf_cnpj': ofx.get('cpf_cnpj', ''),
+                    'cpf_cnpj_fmt': ofx.get('cpf_cnpj_formatted', ''),
+                    'valor': ofx['valor'],
+                    'descricao': ofx.get('descricao', ''),
+                    'nota_vinculada': self._get_linked_invoice(ofx.get('cpf_cnpj', ''), ofx['data_dt'], ofx['valor']),
+                    'status': 'Vinculado' if ofx.get('matched', False) else 'Não Vinculado',
+                    'obs': ofx.get('historico', '')
+                })
 
-            # Total Emitido
-            emitido_item = QTableWidgetItem(f"R$ {row['total_emitido']:,.2f}")
-            emitido_item.setData(Qt.UserRole, float(row['total_emitido']))  # For numeric sorting
-            emitido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.detalhada_table.setItem(row_idx, 2, emitido_item)
+        # 2. Add credit card installments
+        if has_cards:
+            for idx, inst in self.installments_df.iterrows():
+                # Use data_prevista (expected date) for installments
+                data_dt = pd.to_datetime(inst['data_prevista'], format='%d/%m/%Y', errors='coerce')
+                all_transactions.append({
+                    'data_dt': data_dt,
+                    'data_str': inst['data_prevista'],
+                    'tipo': 'Cartão',
+                    'cpf_cnpj': inst.get('cpf_cliente', ''),
+                    'cpf_cnpj_fmt': inst.get('cpf_cliente', ''),  # Format if needed
+                    'valor': inst['valor'],
+                    'descricao': f"{inst.get('nome', '')} - Parcela {inst.get('numero_parcela', 0)}/{inst.get('total_parcelas', 0)} - {inst.get('bandeira', '')}",
+                    'nota_vinculada': '',  # Cards don't link to invoices directly
+                    'status': inst.get('status_vinculacao', 'Pendente'),
+                    'obs': f"NSU: {inst.get('nsu_doc', '')}, Adquirente: {inst.get('adquirente', '')}"
+                })
 
-            # Total Recebido
-            recebido_item = QTableWidgetItem(f"R$ {row['total_recebido']:,.2f}")
-            recebido_item.setData(Qt.UserRole, float(row['total_recebido']))  # For numeric sorting
-            recebido_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.detalhada_table.setItem(row_idx, 3, recebido_item)
+        # Sort all transactions by date (most recent first)
+        all_transactions_df = pd.DataFrame(all_transactions)
+        if all_transactions_df.empty:
+            return
 
-            # Pendente
-            pendente_item = QTableWidgetItem(f"R$ {row['total_pendente']:,.2f}")
-            pendente_item.setData(Qt.UserRole, float(row['total_pendente']))  # For numeric sorting
-            pendente_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        all_transactions_df = all_transactions_df.sort_values('data_dt', ascending=False)
 
-            # Color code
-            if row['total_pendente'] > 0:
-                pendente_item.setBackground(QColor(255, 200, 200))
-            else:
-                pendente_item.setBackground(QColor(200, 255, 200))
+        # Group by month
+        all_transactions_df['ano_mes'] = all_transactions_df['data_dt'].dt.to_period('M')
+        months = all_transactions_df['ano_mes'].unique()
 
-            self.detalhada_table.setItem(row_idx, 4, pendente_item)
+        # Create tree structure: Month > Day > Transactions
+        for month in sorted(months, reverse=True):  # Most recent first
+            month_data = all_transactions_df[all_transactions_df['ano_mes'] == month]
+            month_total = month_data['valor'].sum()
+            month_count = len(month_data)
 
-            # % Markup
-            percent_item = QTableWidgetItem(f"{row['percent_markup']:.1f}%")
-            percent_item.setData(Qt.UserRole, float(row['percent_markup']))  # For numeric sorting
-            percent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            # Create month header
+            month_str = month.strftime('%B/%Y').capitalize()
+            # Translate month names to Portuguese
+            month_str = month_str.replace('January', 'Janeiro').replace('February', 'Fevereiro').replace('March', 'Março')
+            month_str = month_str.replace('April', 'Abril').replace('May', 'Maio').replace('June', 'Junho')
+            month_str = month_str.replace('July', 'Julho').replace('August', 'Agosto').replace('September', 'Setembro')
+            month_str = month_str.replace('October', 'Outubro').replace('November', 'Novembro').replace('December', 'Dezembro')
 
-            # Color code (for markup: 5-15% is normal range for agency commission)
-            if 5 <= row['percent_markup'] <= 15:
-                percent_item.setBackground(QColor(200, 255, 200))  # Green - normal range
-            elif row['percent_markup'] < 5 or row['percent_markup'] > 20:
-                percent_item.setBackground(QColor(255, 200, 200))  # Red - unusual
-            else:
-                percent_item.setBackground(QColor(255, 255, 200))  # Yellow - acceptable
+            month_item = QTreeWidgetItem(self.detalhada_tree)
+            month_item.setText(0, f"📅 {month_str}")
+            month_item.setText(3, f"R$ {month_total:,.2f}")
+            month_item.setText(6, f"{month_count} recebimentos")
+            month_item.setFont(0, bold_font)
+            month_item.setBackground(0, QColor(240, 248, 255))
 
-            self.detalhada_table.setItem(row_idx, 5, percent_item)
+            # Group by day within month
+            days = month_data['data_str'].unique()
+            for day_str in sorted(days, reverse=True):  # Most recent first
+                day_data = month_data[month_data['data_str'] == day_str]
+                day_total = day_data['valor'].sum()
+                day_count = len(day_data)
+
+                # Create day header
+                day_item = QTreeWidgetItem(month_item)
+                day_item.setText(0, f"  📆 {day_str}")
+                day_item.setText(3, f"R$ {day_total:,.2f}")
+                day_item.setText(6, f"{day_count} recebimentos")
+                day_item.setFont(0, bold_font)
+                day_item.setBackground(0, QColor(250, 250, 250))
+
+                # Add individual transactions
+                for idx, trans in day_data.iterrows():
+                    trans_item = QTreeWidgetItem(day_item)
+                    trans_item.setText(0, f"    {trans['descricao']}")
+                    trans_item.setText(1, trans['tipo'])
+                    trans_item.setText(2, trans['cpf_cnpj_fmt'])
+                    trans_item.setText(3, f"R$ {trans['valor']:,.2f}")
+                    trans_item.setText(4, trans['nota_vinculada'])
+                    trans_item.setText(5, trans['status'])
+                    trans_item.setText(6, trans['obs'][:50] if trans['obs'] else '')  # Truncate long obs
+
+                    # Color code by status
+                    if trans['status'] == 'Vinculado':
+                        trans_item.setForeground(5, QColor(0, 128, 0))
+                    elif trans['status'] == 'Pendente':
+                        trans_item.setForeground(5, QColor(200, 100, 0))
+
+                    # Align value to right
+                    trans_item.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
+
+        print(f"[DETALHADA-TREE] update_detalhada_table concluído em {time.time() - start_time:.2f}s")
+
+    def _filter_ofx_for_detalhada(self, ofx_df):
+        """Filter OFX transactions for detalhada view: only credits, no transfers, no card operators"""
+        if ofx_df is None or ofx_df.empty:
+            return pd.DataFrame()
+
+        # Only credits (valor > 0)
+        filtered = ofx_df[ofx_df['valor'] > 0].copy()
+
+        # Filter out card operators (Cielo, Rede, Stone, PagSeguro, etc.)
+        card_operators = ['CIELO', 'REDE', 'STONE', 'PAGSEGURO', 'GETNET', 'MERCADO PAGO',
+                         'SAFRAPAY', 'BIN', 'ELAVON', 'ADYEN', 'SUMUP']
+
+        if 'descricao' in filtered.columns:
+            for operator in card_operators:
+                filtered = filtered[~filtered['descricao'].str.contains(operator, case=False, na=False)]
+
+        if 'historico' in filtered.columns:
+            for operator in card_operators:
+                filtered = filtered[~filtered['historico'].str.contains(operator, case=False, na=False)]
+
+        # Filter out transfers (typical patterns)
+        transfer_patterns = ['TRANSF', 'TED', 'DOC', 'PIX ENVIADO', 'APLICACAO', 'RESGATE']
+
+        if 'descricao' in filtered.columns:
+            for pattern in transfer_patterns:
+                filtered = filtered[~filtered['descricao'].str.contains(pattern, case=False, na=False)]
+
+        if 'historico' in filtered.columns:
+            for pattern in transfer_patterns:
+                filtered = filtered[~filtered['historico'].str.contains(pattern, case=False, na=False)]
+
+        return filtered
+
+    def _get_linked_invoice(self, cpf_cnpj, data_dt, valor):
+        """Get linked invoice number if exists"""
+        if self.invoices_df is None or self.invoices_df.empty or not cpf_cnpj:
+            return ''
+
+        # Look for invoice with same CPF and nearby date
+        customer_invoices = self.invoices_df[self.invoices_df['cpf_cnpj'] == cpf_cnpj]
+        if customer_invoices.empty:
+            return ''
+
+        # Find invoice within ±3 days
+        for idx, inv in customer_invoices.iterrows():
+            if 'data_dt' in inv and pd.notna(inv['data_dt']):
+                days_diff = abs((inv['data_dt'] - data_dt).days)
+                if days_diff <= 3:
+                    return str(inv.get('numero', ''))
+
+        return ''
 
     def update_status(self):
         """Update status label"""
@@ -736,38 +849,69 @@ class InvoiceAnalysisTab(QWidget):
                 )
 
     def export_detalhada(self):
-        """Export detalhada view to CSV"""
-        if self.monthly_summary_df is None or self.monthly_summary_df.empty:
-            QMessageBox.warning(self, "Exportar", "Nenhuma análise disponível para exportar.")
+        """Export detalhada view to CSV - exports all daily transactions"""
+        # Check if we have data
+        has_ofx = self.ofx_df is not None and not self.ofx_df.empty
+        has_cards = self.installments_df is not None and not self.installments_df.empty
+
+        if not has_ofx and not has_cards:
+            QMessageBox.warning(self, "Exportar", "Nenhuma transação disponível para exportar.")
             return
 
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Exportar Análise Detalhada",
-            "analise_detalhada_notas.csv",
+            "analise_detalhada_transacoes.csv",
             "CSV Files (*.csv)"
         )
 
         if file_path:
             try:
-                # Prepare export dataframe
-                export_df = self.monthly_summary_df[[
-                    'mes', 'qtd_notas',
-                    'total_emitido', 'total_recebido', 'total_pendente', 'percent_markup'
-                ]].copy()
+                # Collect all transactions (same logic as update_detalhada_table)
+                all_transactions = []
 
-                export_df.columns = [
-                    'Mês', 'Qtd Notas',
-                    'Total Emitido (R$)', 'Total Recebido (R$)', 'Pendente (R$)', '% Markup'
-                ]
+                # Add OFX transactions (filtered)
+                if has_ofx:
+                    ofx_filtered = self._filter_ofx_for_detalhada(self.ofx_df)
+                    for idx, ofx in ofx_filtered.iterrows():
+                        all_transactions.append({
+                            'Data': ofx['data'],
+                            'Tipo': 'OFX',
+                            'CPF/CNPJ Cliente': ofx.get('cpf_cnpj_formatted', ''),
+                            'Valor (R$)': ofx['valor'],
+                            'Descrição': ofx.get('descricao', ''),
+                            'Nota Vinculada': self._get_linked_invoice(ofx.get('cpf_cnpj', ''), ofx['data_dt'], ofx['valor']),
+                            'Status': 'Vinculado' if ofx.get('matched', False) else 'Não Vinculado',
+                            'Observações': ofx.get('historico', '')
+                        })
 
-                export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
+                # Add credit card installments
+                if has_cards:
+                    for idx, inst in self.installments_df.iterrows():
+                        all_transactions.append({
+                            'Data': inst['data_prevista'],
+                            'Tipo': 'Cartão',
+                            'CPF/CNPJ Cliente': inst.get('cpf_cliente', ''),
+                            'Valor (R$)': inst['valor'],
+                            'Descrição': f"{inst.get('nome', '')} - Parcela {inst.get('numero_parcela', 0)}/{inst.get('total_parcelas', 0)} - {inst.get('bandeira', '')}",
+                            'Nota Vinculada': '',
+                            'Status': inst.get('status_vinculacao', 'Pendente'),
+                            'Observações': f"NSU: {inst.get('nsu_doc', '')}, Adquirente: {inst.get('adquirente', '')}"
+                        })
 
-                QMessageBox.information(
-                    self,
-                    "Exportação",
-                    f"Análise detalhada exportada com sucesso!\n\n{file_path}"
-                )
+                # Create DataFrame and export
+                export_df = pd.DataFrame(all_transactions)
+                if not export_df.empty:
+                    export_df.to_csv(file_path, index=False, encoding='utf-8-sig')
+
+                    QMessageBox.information(
+                        self,
+                        "Exportação",
+                        f"Transações detalhadas exportadas com sucesso!\n\nTotal: {len(all_transactions)} transações\n\n{file_path}"
+                    )
+                else:
+                    QMessageBox.warning(self, "Exportar", "Nenhuma transação encontrada para exportar.")
+
             except Exception as e:
                 QMessageBox.critical(
                     self,
