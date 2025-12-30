@@ -9,12 +9,15 @@ from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from PyQt5.QtGui import QColor, QFont, QTextCursor
 import pandas as pd
 from datetime import datetime
+from core.invoice_matcher import InvoiceMatcher
+from core.credit_card_matcher import CreditCardMatcher
 
 
 class MatchWorker(QThread):
     """Worker thread for matching operations"""
     progress = pyqtSignal(str)  # Log message
     finished = pyqtSignal(dict)  # Results
+    data_updated = pyqtSignal(str, object)  # (data_type, dataframe) - notify when data changes
 
     def __init__(self, operation, data):
         super().__init__()
@@ -37,37 +40,143 @@ class MatchWorker(QThread):
 
             self.finished.emit(result)
         except Exception as e:
+            import traceback
+            error_msg = f"Erro: {str(e)}\n{traceback.format_exc()}"
+            self.progress.emit(f"❌ {error_msg}")
             self.finished.emit({'success': False, 'error': str(e)})
 
     def match_ofx_nfse(self):
         """Match OFX with NFSe invoices"""
         self.progress.emit("🔄 Iniciando vinculação OFX ↔ NFSe...")
-        # Implementation will connect to existing matcher
-        return {'success': True, 'matched': 0, 'pending': 0}
+
+        invoices_df = self.data.get('invoices_df')
+        ofx_df = self.data.get('ofx_df')
+
+        if invoices_df is None or invoices_df.empty:
+            self.progress.emit("⚠️ Nenhuma nota fiscal importada")
+            return {'success': False, 'error': 'No invoices'}
+
+        if ofx_df is None or ofx_df.empty:
+            self.progress.emit("⚠️ Nenhuma transação OFX importada")
+            return {'success': False, 'error': 'No OFX data'}
+
+        # Use agency mode by default (CPF + Date, ignore value difference)
+        self.progress.emit("  📋 Configurações: Modo Agência (CPF + Data)")
+        self.progress.emit("  📅 Tolerância: ±35 dias")
+
+        matcher = InvoiceMatcher(
+            tolerance_days=35,
+            tolerance_percent=0.0,  # Ignored in agency mode
+            mode='agency'
+        )
+
+        self.progress.emit(f"  🔍 Analisando {len(invoices_df)} notas contra {len(ofx_df[ofx_df['valor'] > 0])} créditos OFX...")
+
+        invoices, matches, summary = matcher.match(invoices_df, ofx_df)
+
+        # Emit updated invoices data
+        self.data_updated.emit('invoices', invoices)
+
+        matched = summary.get('matched', 0)
+        total = summary.get('total_invoices', 0)
+        matched_value = summary.get('matched_value', 0)
+
+        self.progress.emit(f"  ✅ Vinculadas: {matched} de {total} notas")
+        self.progress.emit(f"  💰 Valor vinculado: R$ {matched_value:,.2f}")
+
+        return {
+            'success': True,
+            'matched': matched,
+            'total': total,
+            'matched_value': matched_value,
+            'summary': summary
+        }
 
     def match_ofx_cartao(self):
         """Match OFX with credit card installments"""
         self.progress.emit("🔄 Iniciando vinculação OFX ↔ Cartão...")
-        return {'success': True, 'matched': 0, 'pending': 0}
+
+        installments_df = self.data.get('installments_df')
+        ofx_df = self.data.get('ofx_df')
+
+        if installments_df is None or installments_df.empty:
+            self.progress.emit("⚠️ Nenhuma parcela de cartão importada")
+            return {'success': False, 'error': 'No installments'}
+
+        if ofx_df is None or ofx_df.empty:
+            self.progress.emit("⚠️ Nenhuma transação OFX importada")
+            return {'success': False, 'error': 'No OFX data'}
+
+        self.progress.emit("  📋 Configurações: ±5 dias, ±10% valor")
+
+        matcher = CreditCardMatcher(
+            date_tolerance_days=5,
+            value_tolerance=0.10
+        )
+
+        self.progress.emit(f"  🔍 Analisando {len(installments_df)} parcelas contra OFX...")
+
+        installments, matches, summary = matcher.match(installments_df, ofx_df)
+
+        # Emit updated installments data
+        self.data_updated.emit('installments', installments)
+
+        matched = summary.get('vinculadas', 0)
+        total = summary.get('total_parcelas', 0)
+
+        self.progress.emit(f"  ✅ Vinculadas: {matched} de {total} parcelas")
+
+        return {
+            'success': True,
+            'matched': matched,
+            'total': total,
+            'summary': summary
+        }
 
     def match_nfse_cartao(self):
         """Match NFSe with credit card sales"""
         self.progress.emit("🔄 Iniciando vinculação NFSe ↔ Cartão...")
-        return {'success': True, 'matched': 0, 'pending': 0}
+        self.progress.emit("  ℹ️ Esta vinculação será implementada em versão futura")
+        self.progress.emit("  💡 Por enquanto, use OFX como ponte entre NFSe e Cartão")
+
+        return {
+            'success': True,
+            'matched': 0,
+            'total': 0,
+            'note': 'Not yet implemented'
+        }
 
     def match_all(self):
         """Run all matching operations in sequence"""
         self.progress.emit("=" * 60)
         self.progress.emit("🚀 VINCULAÇÃO AUTOMÁTICA COMPLETA")
         self.progress.emit("=" * 60)
+        self.progress.emit("")
 
-        results = {
-            'ofx_nfse': self.match_ofx_nfse(),
-            'ofx_cartao': self.match_ofx_cartao(),
-            'nfse_cartao': self.match_nfse_cartao()
-        }
+        results = {}
 
-        self.progress.emit("\n✅ Vinculação completa finalizada!")
+        # 1. OFX <-> NFSe
+        self.progress.emit("ETAPA 1/3: OFX ↔ NFSe")
+        self.progress.emit("-" * 60)
+        results['ofx_nfse'] = self.match_ofx_nfse()
+        self.progress.emit("")
+
+        # 2. OFX <-> Cartão
+        self.progress.emit("ETAPA 2/3: OFX ↔ Cartão")
+        self.progress.emit("-" * 60)
+        results['ofx_cartao'] = self.match_ofx_cartao()
+        self.progress.emit("")
+
+        # 3. NFSe <-> Cartão (future)
+        self.progress.emit("ETAPA 3/3: NFSe ↔ Cartão")
+        self.progress.emit("-" * 60)
+        results['nfse_cartao'] = self.match_nfse_cartao()
+        self.progress.emit("")
+
+        self.progress.emit("=" * 60)
+        self.progress.emit("✅ VINCULAÇÃO COMPLETA FINALIZADA!")
+        self.progress.emit("=" * 60)
+
         return {'success': True, 'results': results}
 
 
@@ -76,6 +185,8 @@ class MatchTab(QWidget):
 
     # Signals to notify other tabs
     match_completed = pyqtSignal(str)  # match_type
+    invoices_updated = pyqtSignal(object)  # Updated invoices DataFrame
+    installments_updated = pyqtSignal(object)  # Updated installments DataFrame
 
     def __init__(self):
         super().__init__()
@@ -380,8 +491,20 @@ class MatchTab(QWidget):
             'installments_df': self.installments_df
         })
         self.worker.progress.connect(self.log)
+        self.worker.data_updated.connect(self.on_data_updated)
         self.worker.finished.connect(self.on_matching_finished)
         self.worker.start()
+
+    def on_data_updated(self, data_type, dataframe):
+        """Handle data updates from worker"""
+        if data_type == 'invoices':
+            self.invoices_df = dataframe
+            self.invoices_updated.emit(dataframe)
+            self.log(f"  📤 Dados de notas atualizados ({len(dataframe)} registros)")
+        elif data_type == 'installments':
+            self.installments_df = dataframe
+            self.installments_updated.emit(dataframe)
+            self.log(f"  📤 Dados de parcelas atualizados ({len(dataframe)} registros)")
 
     def on_matching_finished(self, result):
         """Handle matching completion"""
@@ -390,6 +513,10 @@ class MatchTab(QWidget):
 
         if result.get('success'):
             self.log(f"\n✅ Operação concluída com sucesso!")
+
+            # Emit match_completed signal
+            # This will trigger updates in other tabs
+            self.match_completed.emit('completed')
         else:
             self.log(f"\n❌ Erro: {result.get('error', 'Unknown error')}")
 

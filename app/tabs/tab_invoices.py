@@ -201,29 +201,16 @@ class InvoicesTab(QWidget):
 
         controls_layout.addSpacing(20)
 
-        # Match button
-        self.btn_match = QPushButton("🔗 Vincular com OFX")
-        self.btn_match.setStyleSheet("""
-            QPushButton {
-                background-color: #00897B;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 8px 15px;
-                font-size: 11px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #00796B;
-            }
-            QPushButton:disabled {
-                background-color: #BDBDBD;
-                color: #757575;
-            }
-        """)
-        self.btn_match.clicked.connect(self.match_with_ofx)
-        self.btn_match.setEnabled(False)
-        controls_layout.addWidget(self.btn_match)
+        # Match button REMOVED - Use Tab 4 "Vincular Transações" for centralized matching
+        # self.btn_match = QPushButton("🔗 Vincular com OFX")
+        # ...
+
+        # Info label directing to Match tab
+        match_info = QLabel("💡 Use a aba \"4. Vincular Transações\" para fazer matching")
+        match_info.setStyleSheet("color: #00897B; font-size: 10px; font-style: italic;")
+        controls_layout.addWidget(match_info)
+
+        controls_layout.addSpacing(20)
 
         # Filter combo
         controls_layout.addSpacing(20)
@@ -347,7 +334,7 @@ class InvoicesTab(QWidget):
         self.invoices_df = df
         self.update_table()
         self.update_status()
-        self.btn_match.setEnabled(True)
+        # self.btn_match.setEnabled(True)  # REMOVED - matching centralized in Tab 4
 
         # Emit signal
         self.invoices_loaded.emit(df)
@@ -463,7 +450,7 @@ class InvoicesTab(QWidget):
             self.matches_df = None
             self.table.setRowCount(0)
             self.update_status()
-            self.btn_match.setEnabled(False)
+            # self.btn_match.setEnabled(False)  # REMOVED - matching centralized in Tab 4
 
     def match_with_ofx(self):
         """Match invoices with OFX data"""
@@ -568,7 +555,7 @@ class InvoicesTab(QWidget):
         # Show progress
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)
-        self.btn_match.setEnabled(False)
+        # self.btn_match.setEnabled(False)  # REMOVED - matching centralized in Tab 4
 
         # Start matching thread
         self.match_thread = MatchThread(
@@ -594,7 +581,7 @@ class InvoicesTab(QWidget):
         print(f"[UI] on_match_finished iniciado - {time.strftime('%H:%M:%S')}")
 
         self.progress_bar.setVisible(False)
-        self.btn_match.setEnabled(True)
+        # self.btn_match.setEnabled(True)  # REMOVED - matching centralized in Tab 4
 
         self.invoices_df = invoices
         self.matches_df = matches
@@ -660,5 +647,5 @@ class InvoicesTab(QWidget):
         self.invoices_df = df
         self.update_table()
         self.update_status()
-        if df is not None and not df.empty:
-            self.btn_match.setEnabled(True)
+        # if df is not None and not df.empty:
+        #     self.btn_match.setEnabled(True)  # REMOVED - matching centralized in Tab 4

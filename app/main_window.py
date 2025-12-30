@@ -110,6 +110,11 @@ class MainWindow(QMainWindow):
         self.tab_invoices.invoices_loaded.connect(lambda df: self.tab_match.set_data(invoices_df=df))
         self.tab_credit_cards.cards_loaded.connect(lambda sales, inst: self.tab_match.set_data(installments_df=inst))
 
+        # Connect Match tab updates back to other tabs
+        self.tab_match.invoices_updated.connect(self._on_match_invoices_updated)
+        self.tab_match.installments_updated.connect(self._on_match_installments_updated)
+        self.tab_match.match_completed.connect(self._on_match_completed)
+
         # Set central widget
         self.setCentralWidget(self.tabs)
 
@@ -250,6 +255,37 @@ class MainWindow(QMainWindow):
             "Importar OFX",
             "Por favor, importe arquivos OFX na aba 'Importar' antes de vincular com notas fiscais."
         )
+
+    def _on_match_invoices_updated(self, invoices_df):
+        """Handle invoices updated from Match tab"""
+        # Update invoices tab with matched data
+        self.tab_invoices.invoices_df = invoices_df
+        self.tab_invoices.update_table()
+        self.tab_invoices.update_status()
+
+        # Update invoice analysis tab
+        self.tab_invoice_analysis.set_data(invoices_df, self.df)
+
+        # Update unmatched tab
+        self.tab_unmatched.set_data(invoices_df, self.df)
+
+    def _on_match_installments_updated(self, installments_df):
+        """Handle installments updated from Match tab"""
+        # Update credit cards tab with matched data
+        self.tab_credit_cards.installments_df = installments_df
+        self.tab_credit_cards.refresh_tables()
+
+        # Update invoice analysis tab (if it has card data handling)
+        sales_df = self.tab_credit_cards.sales_df
+        if sales_df is not None:
+            self.tab_invoice_analysis.set_card_data(sales_df, installments_df)
+
+        # Update unmatched tab
+        self.tab_unmatched.set_card_data(installments_df)
+
+    def _on_match_completed(self, match_type):
+        """Handle match completion from Match tab"""
+        self.statusBar().showMessage("✅ Vinculação concluída com sucesso!", 5000)
 
     def on_data_recategorized(self, df):
         """Handle data recategorized signal from Categories tab"""

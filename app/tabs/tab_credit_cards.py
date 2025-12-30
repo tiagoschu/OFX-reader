@@ -168,13 +168,13 @@ class CreditCardsTab(QWidget):
         self.file_label.setStyleSheet("color: #666; font-style: italic; margin-left: 10px;")
         layout.addWidget(self.file_label)
 
-        # Match controls
+        # Match controls REMOVED - Use Tab 4 "Vincular Transações" for centralized matching
         match_layout = QHBoxLayout()
 
-        self.match_btn = QPushButton("🔗 Vincular com OFX")
-        self.match_btn.clicked.connect(self.start_matching)
-        self.match_btn.setEnabled(False)
-        match_layout.addWidget(self.match_btn)
+        # Info label directing to Match tab
+        match_info = QLabel("💡 Use a aba \"4. Vincular Transações\" para fazer matching")
+        match_info.setStyleSheet("color: #1976D2; font-size: 10px; font-style: italic;")
+        match_layout.addWidget(match_info)
 
         self.refresh_btn = QPushButton("🔄 Atualizar")
         self.refresh_btn.clicked.connect(self.refresh_tables)
@@ -385,7 +385,7 @@ class CreditCardsTab(QWidget):
         print(f"[CARD-UI] update_tables() concluído em {time.time() - update_start:.2f}s")
 
         self.update_summary()
-        self.match_btn.setEnabled(True)
+        # self.match_btn.setEnabled(True)  # REMOVED - matching centralized in Tab 4
         self.refresh_btn.setEnabled(True)
 
         self.status_label.setText(
@@ -592,7 +592,7 @@ class CreditCardsTab(QWidget):
 
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)
-        self.match_btn.setEnabled(False)
+        # self.match_btn.setEnabled(False)  # REMOVED - matching centralized in Tab 4
         self.status_label.setText("Vinculando com OFX...")
 
         self.match_thread = MatchThread(self.installments_df, self.ofx_df)
@@ -608,7 +608,7 @@ class CreditCardsTab(QWidget):
         print(f"[CARD-UI] on_match_finished iniciado - {time.strftime('%H:%M:%S')}")
 
         self.progress_bar.setVisible(False)
-        self.match_btn.setEnabled(True)
+        # self.match_btn.setEnabled(True)  # REMOVED - matching centralized in Tab 4
 
         self.installments_df = installments
         self.matches_df = matches
