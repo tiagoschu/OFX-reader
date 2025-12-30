@@ -655,16 +655,22 @@ class UnmatchedTab(QWidget):
             # NSU/DOC
             self.installments_table.setItem(row_idx, 0, QTableWidgetItem(str(row.get('nsu_doc', ''))))
 
-            # Data Prevista
-            self.installments_table.setItem(row_idx, 1, QTableWidgetItem(row.get('data_prevista', '')))
+            # Data Prevista - convert Timestamp to string
+            data_prevista = row.get('data_prevista', '')
+            if isinstance(data_prevista, str):
+                data_str = data_prevista
+            else:
+                # It's a Timestamp, convert to string
+                data_str = str(data_prevista)[:10] if pd.notna(data_prevista) else ''
+            self.installments_table.setItem(row_idx, 1, QTableWidgetItem(data_str))
 
             # Nome
             nome = row.get('nome', '')
-            self.installments_table.setItem(row_idx, 2, QTableWidgetItem(nome))
+            self.installments_table.setItem(row_idx, 2, QTableWidgetItem(str(nome)))
 
             # CPF Cliente
             cpf = row.get('cpf_cliente', '-')
-            self.installments_table.setItem(row_idx, 3, QTableWidgetItem(cpf))
+            self.installments_table.setItem(row_idx, 3, QTableWidgetItem(str(cpf)))
 
             # Valor Líquido
             valor_item = QTableWidgetItem(f"R$ {row.get('valor', 0):,.2f}")
