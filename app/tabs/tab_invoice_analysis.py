@@ -1172,18 +1172,35 @@ class InvoiceAnalysisTab(QWidget):
 
         try:
             # Merge customer summary with groups
-            # Match by CPF
+            # Match by CPF first, then by name if CPF not found
             merged_df = self.customer_summary_df.copy()
             merged_df['cpf_clean'] = merged_df['cpf_cnpj'].str.replace(r'[^\d]', '', regex=True)
+            merged_df['nome_clean'] = merged_df['nome'].str.strip().str.upper()
 
-            # Join with groups
-            groups_lookup = self.groups_df.set_index('cpf')[['grupo', 'markup_percent']].to_dict('index')
+            # Create lookup dictionaries for both CPF and name
+            groups_cpf_lookup = self.groups_df.set_index('cpf')[['grupo', 'markup_percent', 'nome']].to_dict('index')
+            groups_name_lookup = self.groups_df.set_index(
+                self.groups_df['nome'].str.strip().str.upper()
+            )[['grupo', 'markup_percent']].to_dict('index')
 
-            merged_df['grupo'] = merged_df['cpf_clean'].map(
-                lambda cpf: groups_lookup.get(cpf, {}).get('grupo', 'Sem Grupo')
-            )
-            merged_df['markup_grupo'] = merged_df['cpf_clean'].map(
-                lambda cpf: groups_lookup.get(cpf, {}).get('markup_percent', 0.0)
+            # Match by CPF first, then fallback to name
+            def get_group_info(row):
+                cpf = row['cpf_clean']
+                nome = row['nome_clean']
+
+                # Try CPF first
+                if cpf in groups_cpf_lookup:
+                    return groups_cpf_lookup[cpf]['grupo'], groups_cpf_lookup[cpf]['markup_percent']
+
+                # Fallback to name
+                if nome in groups_name_lookup:
+                    return groups_name_lookup[nome]['grupo'], groups_name_lookup[nome]['markup_percent']
+
+                # Not found
+                return 'Sem Grupo', 0.0
+
+            merged_df[['grupo', 'markup_grupo']] = merged_df.apply(
+                lambda row: pd.Series(get_group_info(row)), axis=1
             )
 
             # Font for bold headers
@@ -1266,6 +1283,52 @@ class InvoiceAnalysisTab(QWidget):
                     # Highlight markup columns
                     client_item.setBackground(5, QColor(240, 240, 255))  # Light blue for markup meta
                     client_item.setBackground(6, QColor(230, 255, 255))  # Light cyan for markup realizado
+
+                    # Add transaction details as children (Level 3)
+                    if self.invoices_df is not None and not self.invoices_df.empty:
+                        # Get client's CPF for filtering
+                        client_cpf = client['cpf_clean']
+
+                        # Filter invoices for this client
+                        client_invoices = self.invoices_df[
+                            self.invoices_df['cpf_cnpj'].str.replace(r'[^\d]', '', regex=True) == client_cpf
+                        ]
+
+                        # Add invoices
+                        for inv_idx, invoice in client_invoices.iterrows():
+                            invoice_item = QTreeWidgetItem(client_item)
+
+                            # Determine status icon
+                            status_icon = "✓" if pd.notna(invoice.get('ofx_hash')) else "📄"
+
+                            # Format date
+                            data_emissao = invoice.get('data_emissao', '')
+                            if pd.notna(data_emissao):
+                                data_str = pd.to_datetime(data_emissao).strftime('%d/%m/%Y')
+                            else:
+                                data_str = ''
+
+                            # Invoice details
+                            valor = invoice.get('valor_total', 0.0)
+                            numero = invoice.get('numero', '')
+
+                            invoice_item.setText(0, f"      {status_icon} NF {numero} - {data_str}")
+                            invoice_item.setText(2, f"R$ {valor:,.2f}")
+
+                            # Check if matched with OFX
+                            if pd.notna(invoice.get('ofx_hash')):
+                                invoice_item.setForeground(0, QColor(0, 128, 0))  # Green for matched
+
+                                # Try to find OFX transaction
+                                if self.ofx_df is not None:
+                                    ofx_match = self.ofx_df[
+                                        self.ofx_df['hash'] == invoice.get('ofx_hash')
+                                    ]
+                                    if not ofx_match.empty:
+                                        ofx_valor = ofx_match.iloc[0].get('valor', 0.0)
+                                        invoice_item.setText(3, f"R$ {abs(ofx_valor):,.2f}")
+                            else:
+                                invoice_item.setForeground(0, QColor(128, 128, 128))  # Gray for unmatched
 
             # Expand all groups by default
             self.group_tree.expandAll()
