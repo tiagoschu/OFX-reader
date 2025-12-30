@@ -1202,7 +1202,7 @@ class InvoiceAnalysisTab(QWidget):
                 markup_meta = group_data['markup_grupo'].iloc[0] if len(group_data) > 0 else 0.0
 
                 # Calculate markup realizado (actual markup achieved)
-                markup_realizado = ((total_recebido - total_emitido) / total_emitido * 100) if total_emitido > 0 else 0.0
+                markup_realizado = ((total_emitido - total_recebido) / total_recebido * 100) if total_recebido > 0 else 0.0
 
                 # Create parent item (group summary)
                 parent_item = QTreeWidgetItem(self.group_tree)
@@ -1238,7 +1238,7 @@ class InvoiceAnalysisTab(QWidget):
                     client_item = QTreeWidgetItem(parent_item)
 
                     # Calculate client markup realizado
-                    client_markup_realizado = ((client['total_recebido'] - client['total_emitido']) / client['total_emitido'] * 100) if client['total_emitido'] > 0 else 0.0
+                    client_markup_realizado = ((client['total_emitido'] - client['total_recebido']) / client['total_recebido'] * 100) if client['total_recebido'] > 0 else 0.0
 
                     # Client name
                     client_item.setText(0, f"  👤 {client['nome']}")
