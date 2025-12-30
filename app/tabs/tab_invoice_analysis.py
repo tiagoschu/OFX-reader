@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from core.invoice_matcher import InvoiceMatcher
 from core.exporter import DataExporter
+from core.name_matcher import NameMatcher
 
 
 class InvoiceAnalysisTab(QWidget):
@@ -428,11 +429,22 @@ class InvoiceAnalysisTab(QWidget):
 
     def _add_customer_details(self, parent_item, cpf_cnpj):
         """Add child items showing invoices and OFX receipts for a customer"""
-        if self.invoices_df is None or self.invoices_df.empty:
-            return
+        # Get customer name for name matching
+        customer_name = None
 
-        # Get customer's invoices
-        customer_invoices = self.invoices_df[self.invoices_df['cpf_cnpj'] == cpf_cnpj].copy()
+        # Try to get name from invoices first
+        if self.invoices_df is not None and not self.invoices_df.empty:
+            customer_invoices = self.invoices_df[self.invoices_df['cpf_cnpj'] == cpf_cnpj].copy()
+            if not customer_invoices.empty:
+                customer_name = customer_invoices.iloc[0].get('nome_tomador', '')
+        else:
+            customer_invoices = pd.DataFrame()
+
+        # If no name yet, try from credit card installments
+        if not customer_name and self.installments_df is not None and not self.installments_df.empty:
+            customer_cards = self.installments_df[self.installments_df['cpf_cnpj'] == cpf_cnpj].copy()
+            if not customer_cards.empty:
+                customer_name = customer_cards.iloc[0].get('nome', '')
 
         # Sort by date (most recent first)
         if not customer_invoices.empty and 'data_dt' in customer_invoices.columns:
@@ -531,10 +543,41 @@ class InvoiceAnalysisTab(QWidget):
                     tipo = "CRÉDITO" if valor > 0 else "DÉBITO"
                     print(f"[DEBUG-CLIENTE]   {tipo} | {data} | R$ {valor:,.2f} | {desc}")
 
+            # First, try matching by CPF/CNPJ
             customer_ofx = self.ofx_df[
                 (self.ofx_df['cpf_cnpj'] == cpf_cnpj) &
                 (self.ofx_df['valor'] > 0)
             ].copy()
+
+            # If we have customer name, also try matching by name for OFX without CPF
+            if customer_name:
+                print(f"[NAME-MATCH] Tentando matching por nome: '{customer_name}' para CPF={cpf_cnpj}")
+
+                # Get OFX transactions that don't have CPF or have empty CPF
+                ofx_no_cpf = self.ofx_df[
+                    ((self.ofx_df['cpf_cnpj'].isna()) | (self.ofx_df['cpf_cnpj'] == '')) &
+                    (self.ofx_df['valor'] > 0)
+                ].copy()
+
+                # Try to match by name
+                matched_by_name = []
+                for idx, ofx in ofx_no_cpf.iterrows():
+                    descricao = ofx.get('descricao', '') or ofx.get('memo', '')
+                    is_match, num_matches, matched_words = NameMatcher.match_names(descricao, customer_name, min_matches=2)
+
+                    if is_match:
+                        print(f"[NAME-MATCH] ✓ Match encontrado: '{descricao}' | Palavras: {matched_words} ({num_matches} matches)")
+                        matched_by_name.append(idx)
+
+                # Add matched transactions to customer_ofx
+                if matched_by_name:
+                    ofx_by_name = ofx_no_cpf.loc[matched_by_name]
+                    customer_ofx = pd.concat([customer_ofx, ofx_by_name], ignore_index=False)
+                    print(f"[NAME-MATCH] {len(matched_by_name)} transação(ões) adicionada(s) por nome")
+
+            # Remove duplicates (in case same transaction was matched by both CPF and name)
+            if not customer_ofx.empty:
+                customer_ofx = customer_ofx.drop_duplicates(subset=['id_transacao'] if 'id_transacao' in customer_ofx.columns else None)
 
             # Sort by date (most recent first)
             if not customer_ofx.empty and 'data_dt' in customer_ofx.columns:
