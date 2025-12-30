@@ -223,7 +223,9 @@ class MainWindow(QMainWindow):
 
     def on_cards_loaded(self, sales_df, installments_df):
         """Handle credit card sales loaded signal"""
-        # TODO: Update analysis tab to show credit card sales separately
+        # Update invoice analysis tab with credit card sales data
+        self.tab_invoice_analysis.set_card_data(sales_df, installments_df)
+
         # TODO: Update unmatched tab to show unmatched installments
 
         self.statusBar().showMessage(

@@ -25,6 +25,8 @@ class InvoiceAnalysisTab(QWidget):
         super().__init__()
         self.invoices_df = None
         self.ofx_df = None
+        self.sales_df = None  # Credit card sales
+        self.installments_df = None  # Credit card installments
         self.customer_summary_df = None
         self.monthly_summary_df = None
         self.init_ui()
@@ -290,17 +292,33 @@ class InvoiceAnalysisTab(QWidget):
 
         print(f"[ANALYSIS] set_data concluído em {time.time() - start_time:.2f}s")
 
+    def set_card_data(self, sales_df, installments_df):
+        """Set credit card sales data for analysis"""
+        import time
+        start_time = time.time()
+        print(f"[ANALYSIS] set_card_data iniciado - Sales: {len(sales_df) if sales_df is not None else 0}, Installments: {len(installments_df) if installments_df is not None else 0} - {time.strftime('%H:%M:%S')}")
+
+        self.sales_df = sales_df
+        self.installments_df = installments_df
+        self.refresh_analysis()
+
+        print(f"[ANALYSIS] set_card_data concluído em {time.time() - start_time:.2f}s")
+
     def refresh_analysis(self):
         """Refresh analysis"""
         import time
         start_time = time.time()
         print(f"[ANALYSIS] refresh_analysis iniciado - {time.strftime('%H:%M:%S')}")
 
-        if self.invoices_df is None or self.invoices_df.empty:
+        # Check if we have any data to analyze
+        has_invoices = self.invoices_df is not None and not self.invoices_df.empty
+        has_cards = self.installments_df is not None and not self.installments_df.empty
+
+        if not has_invoices and not has_cards:
             QMessageBox.warning(
                 self,
                 "Análise",
-                "Nenhuma nota fiscal importada. Por favor, importe notas fiscais primeiro."
+                "Nenhum dado importado. Por favor, importe notas fiscais ou vendas de cartão primeiro."
             )
             return
 
@@ -452,6 +470,44 @@ class InvoiceAnalysisTab(QWidget):
                 else:
                     invoice_item.setText(4, "⚠ Pendente")
                     invoice_item.setForeground(4, QColor(200, 100, 0))
+
+        # Add credit card sales section
+        if self.installments_df is not None and not self.installments_df.empty:
+            # Get customer's credit card installments
+            customer_installments = self.installments_df[
+                self.installments_df['cpf_cnpj'] == cpf_cnpj
+            ].copy()
+
+            if not customer_installments.empty:
+                # Add "Vendas no Cartão" section header
+                cards_header = QTreeWidgetItem(parent_item)
+                cards_header.setText(0, f"💳 VENDAS NO CARTÃO ({len(customer_installments)} parcelas)")
+                cards_header.setBackground(0, QColor(255, 248, 240))
+                font = QFont()
+                font.setBold(True)
+                cards_header.setFont(0, font)
+
+                # DEBUG: Log card totals
+                total_cards = customer_installments['valor'].sum()
+                vinculadas = len(customer_installments[customer_installments['status_vinculacao'] == 'Vinculado'])
+                print(f"[DEBUG-CLIENTE] CPF={cpf_cnpj} | Parcelas Cartão: {len(customer_installments)} | Total Cartão: R$ {total_cards:,.2f} | Vinculadas: {vinculadas}")
+
+                # Add each installment as a child
+                for idx, inst in customer_installments.iterrows():
+                    inst_item = QTreeWidgetItem(cards_header)
+                    inst_item.setText(0, f"{inst.get('nsu_doc', 'N/A')} - {inst.get('numero_parcela', 0)}/{inst.get('total_parcelas', 0)}")
+                    inst_item.setText(1, inst.get('nome', ''))
+                    inst_item.setText(2, str(inst.get('data_prevista', ''))[:10] if pd.notna(inst.get('data_prevista')) else '')
+                    inst_item.setText(3, f"R$ {inst.get('valor', 0):,.2f}")
+
+                    # Show match status
+                    status = inst.get('status_vinculacao', 'Pendente')
+                    if status == 'Vinculado':
+                        inst_item.setText(4, "✓ Vinculado")
+                        inst_item.setForeground(4, QColor(0, 128, 0))
+                    else:
+                        inst_item.setText(4, "⚠ Pendente")
+                        inst_item.setForeground(4, QColor(200, 100, 0))
 
         # Get customer's OFX receipts (only credits/receipts, valor > 0)
         if self.ofx_df is not None and not self.ofx_df.empty:
