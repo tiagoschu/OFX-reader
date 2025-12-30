@@ -212,7 +212,15 @@ class InvoiceAnalysisTab(QWidget):
 
         self.sintetica_tree.setAlternatingRowColors(True)
         self.sintetica_tree.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.sintetica_tree.setSortingEnabled(True)  # Enable column sorting
+
+        # Important: Disable automatic sorting for QTreeWidget with children
+        # We'll sort the DataFrame before populating instead
+        self.sintetica_tree.setSortingEnabled(False)
+
+        # Make headers clickable for manual sorting
+        header.setSectionsClickable(True)
+        header.sectionClicked.connect(self._sort_sintetica_table)
+
         self.sintetica_tree.setStyleSheet("""
             QTreeWidget {
                 gridline-color: #E0E0E0;
@@ -231,6 +239,43 @@ class InvoiceAnalysisTab(QWidget):
 
         widget.setLayout(layout)
         return widget
+
+    def _sort_sintetica_table(self, column_index):
+        """Sort sintética table by clicking column header"""
+        if self.customer_summary_df is None or self.customer_summary_df.empty:
+            return
+
+        # Map column index to DataFrame column
+        column_map = {
+            0: 'cpf_cnpj_fmt',      # CPF/CNPJ
+            1: 'nome',               # Nome
+            2: 'qtd_notas',          # Qtd Notas
+            3: 'total_emitido',      # Total Emitido
+            4: 'total_recebido',     # Total Recebido
+            5: 'total_pendente',     # Pendente
+            6: 'percent_markup'      # % Markup
+        }
+
+        if column_index not in column_map:
+            return
+
+        df_column = column_map[column_index]
+
+        # Toggle sort order if clicking same column
+        if not hasattr(self, '_last_sort_column') or self._last_sort_column != column_index:
+            self._sort_ascending = True
+            self._last_sort_column = column_index
+        else:
+            self._sort_ascending = not self._sort_ascending
+
+        # Sort DataFrame
+        self.customer_summary_df = self.customer_summary_df.sort_values(
+            by=df_column,
+            ascending=self._sort_ascending
+        )
+
+        # Refresh table
+        self.update_sintetica_table()
 
     def _create_detalhada_view(self):
         """Create detalhada view (by month/day with transactions)"""
