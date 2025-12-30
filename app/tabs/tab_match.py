@@ -4,7 +4,7 @@ Match Tab - Central hub for all matching operations
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QGroupBox, QTextEdit, QProgressBar,
-                             QSplitter, QFrame)
+                             QSplitter, QFrame, QSpinBox, QDoubleSpinBox)
 from PyQt5.QtCore import Qt, pyqtSignal, QThread
 from PyQt5.QtGui import QColor, QFont, QTextCursor
 import pandas as pd
@@ -60,12 +60,15 @@ class MatchWorker(QThread):
             self.progress.emit("⚠️ Nenhuma transação OFX importada")
             return {'success': False, 'error': 'No OFX data'}
 
+        # Get tolerance from configuration
+        tolerance_days = self.data.get('ofx_nfse_tolerance_days', 35)
+
         # Use agency mode by default (CPF + Date, ignore value difference)
         self.progress.emit("  📋 Configurações: Modo Agência (CPF + Data)")
-        self.progress.emit("  📅 Tolerância: ±35 dias")
+        self.progress.emit(f"  📅 Tolerância: ±{tolerance_days} dias")
 
         matcher = InvoiceMatcher(
-            tolerance_days=35,
+            tolerance_days=tolerance_days,
             tolerance_percent=0.0,  # Ignored in agency mode
             mode='agency'
         )
@@ -107,11 +110,15 @@ class MatchWorker(QThread):
             self.progress.emit("⚠️ Nenhuma transação OFX importada")
             return {'success': False, 'error': 'No OFX data'}
 
-        self.progress.emit("  📋 Configurações: ±5 dias, ±10% valor")
+        # Get tolerance from configuration
+        tolerance_days = self.data.get('ofx_cartao_tolerance_days', 5)
+        tolerance_percent = self.data.get('ofx_cartao_tolerance_percent', 0.10)
+
+        self.progress.emit(f"  📋 Configurações: ±{tolerance_days} dias, ±{tolerance_percent*100:.1f}% valor")
 
         matcher = CreditCardMatcher(
-            date_tolerance_days=5,
-            value_tolerance=0.10
+            date_tolerance_days=tolerance_days,
+            value_tolerance=tolerance_percent
         )
 
         self.progress.emit(f"  🔍 Analisando {len(installments_df)} parcelas contra OFX...")
@@ -194,6 +201,12 @@ class MatchTab(QWidget):
         self.invoices_df = None
         self.installments_df = None
         self.worker = None
+
+        # Tolerance configuration (default values)
+        self.ofx_nfse_tolerance_days = 35  # Default for agency mode
+        self.ofx_cartao_tolerance_days = 5  # Default for card matching
+        self.ofx_cartao_tolerance_percent = 10.0  # Default 10%
+
         self.init_ui()
 
     def init_ui(self):
@@ -270,6 +283,10 @@ class MatchTab(QWidget):
         status_group = self._create_status_group()
         controls_layout.addWidget(status_group)
 
+        # Tolerance configuration
+        config_group = self._create_config_group()
+        controls_layout.addWidget(config_group)
+
         # Individual matching operations
         operations_group = self._create_operations_group()
         controls_layout.addWidget(operations_group)
@@ -300,6 +317,103 @@ class MatchTab(QWidget):
         layout.addWidget(self.ofx_status)
         layout.addWidget(self.nfse_status)
         layout.addWidget(self.cartao_status)
+
+        group.setLayout(layout)
+        return group
+
+    def _create_config_group(self):
+        """Create tolerance configuration group"""
+        group = QGroupBox("⚙️ Configurações de Tolerância")
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+
+        # OFX <-> NFSe tolerance
+        ofx_nfse_layout = QHBoxLayout()
+        ofx_nfse_label = QLabel("OFX ↔ NFSe (dias):")
+        ofx_nfse_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #00897B;")
+        ofx_nfse_label.setFixedWidth(120)
+
+        self.ofx_nfse_days_spin = QSpinBox()
+        self.ofx_nfse_days_spin.setRange(0, 365)
+        self.ofx_nfse_days_spin.setValue(self.ofx_nfse_tolerance_days)
+        self.ofx_nfse_days_spin.setSuffix(" dias")
+        self.ofx_nfse_days_spin.setToolTip("Tolerância de dias para vincular OFX com Notas Fiscais\n(Modo Agência: ignora diferença de valor)")
+        self.ofx_nfse_days_spin.valueChanged.connect(lambda v: setattr(self, 'ofx_nfse_tolerance_days', v))
+        self.ofx_nfse_days_spin.setStyleSheet("""
+            QSpinBox {
+                border: 1px solid #BDBDBD;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+                background: white;
+            }
+        """)
+
+        ofx_nfse_layout.addWidget(ofx_nfse_label)
+        ofx_nfse_layout.addWidget(self.ofx_nfse_days_spin)
+        ofx_nfse_layout.addStretch()
+        layout.addLayout(ofx_nfse_layout)
+
+        # OFX <-> Cartão tolerance (days)
+        ofx_cartao_days_layout = QHBoxLayout()
+        ofx_cartao_days_label = QLabel("OFX ↔ Cartão (dias):")
+        ofx_cartao_days_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #1976D2;")
+        ofx_cartao_days_label.setFixedWidth(120)
+
+        self.ofx_cartao_days_spin = QSpinBox()
+        self.ofx_cartao_days_spin.setRange(0, 90)
+        self.ofx_cartao_days_spin.setValue(self.ofx_cartao_tolerance_days)
+        self.ofx_cartao_days_spin.setSuffix(" dias")
+        self.ofx_cartao_days_spin.setToolTip("Tolerância de dias para vincular OFX com Parcelas de Cartão")
+        self.ofx_cartao_days_spin.valueChanged.connect(lambda v: setattr(self, 'ofx_cartao_tolerance_days', v))
+        self.ofx_cartao_days_spin.setStyleSheet("""
+            QSpinBox {
+                border: 1px solid #BDBDBD;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+                background: white;
+            }
+        """)
+
+        ofx_cartao_days_layout.addWidget(ofx_cartao_days_label)
+        ofx_cartao_days_layout.addWidget(self.ofx_cartao_days_spin)
+        ofx_cartao_days_layout.addStretch()
+        layout.addLayout(ofx_cartao_days_layout)
+
+        # OFX <-> Cartão tolerance (value %)
+        ofx_cartao_percent_layout = QHBoxLayout()
+        ofx_cartao_percent_label = QLabel("OFX ↔ Cartão (valor):")
+        ofx_cartao_percent_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #1976D2;")
+        ofx_cartao_percent_label.setFixedWidth(120)
+
+        self.ofx_cartao_percent_spin = QDoubleSpinBox()
+        self.ofx_cartao_percent_spin.setRange(0, 50)
+        self.ofx_cartao_percent_spin.setValue(self.ofx_cartao_tolerance_percent)
+        self.ofx_cartao_percent_spin.setSuffix("%")
+        self.ofx_cartao_percent_spin.setDecimals(1)
+        self.ofx_cartao_percent_spin.setSingleStep(0.5)
+        self.ofx_cartao_percent_spin.setToolTip("Tolerância de valor (%) para vincular OFX com Parcelas de Cartão")
+        self.ofx_cartao_percent_spin.valueChanged.connect(lambda v: setattr(self, 'ofx_cartao_tolerance_percent', v))
+        self.ofx_cartao_percent_spin.setStyleSheet("""
+            QDoubleSpinBox {
+                border: 1px solid #BDBDBD;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+                background: white;
+            }
+        """)
+
+        ofx_cartao_percent_layout.addWidget(ofx_cartao_percent_label)
+        ofx_cartao_percent_layout.addWidget(self.ofx_cartao_percent_spin)
+        ofx_cartao_percent_layout.addStretch()
+        layout.addLayout(ofx_cartao_percent_layout)
+
+        # Info label
+        info = QLabel("💡 Ajuste as tolerâncias conforme necessário antes de vincular")
+        info.setStyleSheet("font-size: 9px; color: #888; font-style: italic; margin-top: 5px;")
+        layout.addWidget(info)
 
         group.setLayout(layout)
         return group
@@ -484,11 +598,14 @@ class MatchTab(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)  # Indeterminate
 
-        # Create and start worker
+        # Create and start worker with tolerance configuration
         self.worker = MatchWorker(operation, {
             'ofx_df': self.ofx_df,
             'invoices_df': self.invoices_df,
-            'installments_df': self.installments_df
+            'installments_df': self.installments_df,
+            'ofx_nfse_tolerance_days': self.ofx_nfse_tolerance_days,
+            'ofx_cartao_tolerance_days': self.ofx_cartao_tolerance_days,
+            'ofx_cartao_tolerance_percent': self.ofx_cartao_tolerance_percent / 100.0  # Convert % to decimal
         })
         self.worker.progress.connect(self.log)
         self.worker.data_updated.connect(self.on_data_updated)
