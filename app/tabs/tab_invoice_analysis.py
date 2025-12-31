@@ -1219,7 +1219,7 @@ class InvoiceAnalysisTab(QWidget):
                 markup_meta = group_data['markup_grupo'].iloc[0] if len(group_data) > 0 else 0.0
 
                 # Calculate markup realizado (actual markup achieved)
-                markup_realizado = ((total_emitido - total_recebido) / total_recebido * 100) if total_recebido > 0 else 0.0
+                markup_realizado = (total_emitido / total_recebido * 100) if total_recebido > 0 else 0.0
 
                 # Create parent item (group summary)
                 parent_item = QTreeWidgetItem(self.group_tree)
@@ -1255,7 +1255,7 @@ class InvoiceAnalysisTab(QWidget):
                     client_item = QTreeWidgetItem(parent_item)
 
                     # Calculate client markup realizado
-                    client_markup_realizado = ((client['total_emitido'] - client['total_recebido']) / client['total_recebido'] * 100) if client['total_recebido'] > 0 else 0.0
+                    client_markup_realizado = (client['total_emitido'] / client['total_recebido'] * 100) if client['total_recebido'] > 0 else 0.0
 
                     # Client name
                     client_item.setText(0, f"  👤 {client['nome']}")
@@ -1309,7 +1309,7 @@ class InvoiceAnalysisTab(QWidget):
                                 data_str = ''
 
                             # Invoice details - try multiple column names
-                            valor = invoice.get('valor_total', invoice.get('valor', 0.0))
+                            valor = invoice.get('valor_liquido', invoice.get('valor_total', invoice.get('valor', 0.0)))
                             numero = invoice.get('numero', invoice.get('nf_numero', ''))
 
                             invoice_item.setText(0, f"      📄 NF {numero} - {data_str}")
