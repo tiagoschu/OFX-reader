@@ -410,8 +410,35 @@ class MatchTab(QWidget):
         ofx_cartao_percent_layout.addStretch()
         layout.addLayout(ofx_cartao_percent_layout)
 
+        # Table row limit
+        table_limit_layout = QHBoxLayout()
+        table_limit_label = QLabel("Limite de linhas:")
+        table_limit_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #1976D2;")
+        table_limit_label.setFixedWidth(120)
+
+        self.table_row_limit_spin = QSpinBox()
+        self.table_row_limit_spin.setRange(100, 50000)
+        self.table_row_limit_spin.setValue(5000)
+        self.table_row_limit_spin.setSingleStep(1000)
+        self.table_row_limit_spin.setSuffix(" linhas")
+        self.table_row_limit_spin.setToolTip("Limite de linhas exibidas nas tabelas (para melhor performance)")
+        self.table_row_limit_spin.setStyleSheet("""
+            QSpinBox {
+                border: 1px solid #BDBDBD;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+                background: white;
+            }
+        """)
+
+        table_limit_layout.addWidget(table_limit_label)
+        table_limit_layout.addWidget(self.table_row_limit_spin)
+        table_limit_layout.addStretch()
+        layout.addLayout(table_limit_layout)
+
         # Info label
-        info = QLabel("💡 Ajuste as tolerâncias conforme necessário antes de vincular")
+        info = QLabel("💡 Ajuste as tolerâncias e limites conforme necessário")
         info.setStyleSheet("font-size: 9px; color: #888; font-style: italic; margin-top: 5px;")
         layout.addWidget(info)
 

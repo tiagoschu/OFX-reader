@@ -563,8 +563,8 @@ class UnmatchedTab(QWidget):
             self.invoices_table.setRowCount(0)
             return
 
-        # Limit display to first 1000 rows for performance
-        MAX_ROWS = 1000
+        # Limit display to first 5000 rows for performance
+        MAX_ROWS = 5000
         total_rows = len(df)
         display_rows = min(total_rows, MAX_ROWS)
         df_display = df.head(MAX_ROWS)
@@ -621,8 +621,8 @@ class UnmatchedTab(QWidget):
             self.ofx_table.setRowCount(0)
             return
 
-        # Limit display to first 1000 rows for performance
-        MAX_ROWS = 1000
+        # Limit display to first 5000 rows for performance
+        MAX_ROWS = 5000
         total_rows = len(df)
         display_rows = min(total_rows, MAX_ROWS)
         df_display = df.head(MAX_ROWS)
@@ -677,8 +677,8 @@ class UnmatchedTab(QWidget):
             self.installments_table.setRowCount(0)
             return
 
-        # Limit display to first 1000 rows for performance
-        MAX_ROWS = 1000
+        # Limit display to first 5000 rows for performance
+        MAX_ROWS = 5000
         total_rows = len(df)
         display_rows = min(total_rows, MAX_ROWS)
         df_display = df.head(MAX_ROWS)
