@@ -1308,15 +1308,19 @@ class InvoiceAnalysisTab(QWidget):
                             else:
                                 data_str = ''
 
-                            # Invoice details
-                            valor = invoice.get('valor_total', 0.0)
-                            numero = invoice.get('numero', '')
+                            # Invoice details - try multiple column names
+                            valor = invoice.get('valor_total', invoice.get('valor', 0.0))
+                            numero = invoice.get('numero', invoice.get('nf_numero', ''))
 
-                            invoice_item.setText(0, f"      {status_icon} NF {numero} - {data_str}")
+                            invoice_item.setText(0, f"      📄 NF {numero} - {data_str}")
                             invoice_item.setText(2, f"R$ {valor:,.2f}")
+
+                            # Right align value
+                            invoice_item.setTextAlignment(2, Qt.AlignRight)
 
                             # Check if matched with OFX
                             if pd.notna(invoice.get('ofx_hash')):
+                                invoice_item.setText(0, f"      ✓ NF {numero} - {data_str}")
                                 invoice_item.setForeground(0, QColor(0, 128, 0))  # Green for matched
 
                                 # Try to find OFX transaction
@@ -1327,11 +1331,84 @@ class InvoiceAnalysisTab(QWidget):
                                     if not ofx_match.empty:
                                         ofx_valor = ofx_match.iloc[0].get('valor', 0.0)
                                         invoice_item.setText(3, f"R$ {abs(ofx_valor):,.2f}")
+                                        invoice_item.setTextAlignment(3, Qt.AlignRight)
                             else:
                                 invoice_item.setForeground(0, QColor(128, 128, 128))  # Gray for unmatched
 
-            # Expand all groups by default
-            self.group_tree.expandAll()
+                        # Add OFX transactions for this client
+                        if self.ofx_df is not None and not self.ofx_df.empty:
+                            # Filter OFX by client CPF
+                            if 'cpf_cnpj' in self.ofx_df.columns:
+                                client_ofx = self.ofx_df[
+                                    self.ofx_df['cpf_cnpj'].str.replace(r'[^\d]', '', regex=True) == client_cpf
+                                ]
+
+                                for ofx_idx, ofx_trans in client_ofx.iterrows():
+                                    ofx_item = QTreeWidgetItem(client_item)
+
+                                    # Format date
+                                    data_trans = ofx_trans.get('data', '')
+                                    if pd.notna(data_trans):
+                                        data_str = pd.to_datetime(data_trans).strftime('%d/%m/%Y')
+                                    else:
+                                        data_str = ''
+
+                                    # OFX details
+                                    valor = ofx_trans.get('valor', 0.0)
+                                    descricao = ofx_trans.get('descricao', 'OFX')
+
+                                    ofx_item.setText(0, f"      💳 OFX - {data_str} - {descricao[:30]}")
+                                    ofx_item.setText(3, f"R$ {abs(valor):,.2f}")
+                                    ofx_item.setTextAlignment(3, Qt.AlignRight)
+                                    ofx_item.setForeground(0, QColor(0, 100, 200))  # Blue for OFX
+
+                        # Add card transactions for this client
+                        if hasattr(self, 'installments_df') and self.installments_df is not None and not self.installments_df.empty:
+                            # Filter card installments by client CPF
+                            if 'cpf_cnpj' in self.installments_df.columns:
+                                client_cards = self.installments_df[
+                                    self.installments_df['cpf_cnpj'].str.replace(r'[^\d]', '', regex=True) == client_cpf
+                                ]
+
+                                for card_idx, card_trans in client_cards.iterrows():
+                                    card_item = QTreeWidgetItem(client_item)
+
+                                    # Format date
+                                    data_venc = card_trans.get('data_vencimento', '')
+                                    if pd.notna(data_venc):
+                                        data_str = pd.to_datetime(data_venc).strftime('%d/%m/%Y')
+                                    else:
+                                        data_str = ''
+
+                                    # Card details
+                                    valor = card_trans.get('valor_parcela', 0.0)
+                                    parcela = card_trans.get('parcela', '')
+
+                                    card_item.setText(0, f"      💳 Cartão - {data_str} - Parc. {parcela}")
+                                    ofx_hash = card_trans.get('ofx_hash')
+                                    if pd.notna(ofx_hash):
+                                        # Matched with OFX
+                                        card_item.setForeground(0, QColor(0, 150, 0))  # Green
+                                        if self.ofx_df is not None:
+                                            ofx_match = self.ofx_df[self.ofx_df['hash'] == ofx_hash]
+                                            if not ofx_match.empty:
+                                                ofx_valor = ofx_match.iloc[0].get('valor', 0.0)
+                                                card_item.setText(3, f"R$ {abs(ofx_valor):,.2f}")
+                                    else:
+                                        card_item.setText(2, f"R$ {valor:,.2f}")
+                                        card_item.setForeground(0, QColor(200, 100, 0))  # Orange for unmatched
+
+                                    card_item.setTextAlignment(2, Qt.AlignRight)
+                                    card_item.setTextAlignment(3, Qt.AlignRight)
+
+            # Expand only groups (level 0), not clients or invoices
+            for i in range(self.group_tree.topLevelItemCount()):
+                group_item = self.group_tree.topLevelItem(i)
+                group_item.setExpanded(True)  # Expand group
+                # Keep clients collapsed by default
+                for j in range(group_item.childCount()):
+                    client_item = group_item.child(j)
+                    client_item.setExpanded(False)  # Collapse client details
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao atualizar análise por grupo: {str(e)}")
